@@ -6,6 +6,8 @@ const testRoutes = require("./routes/testRoute");
 
 const app = express();
 
+const cors = require("cors");
+
 const PORT = process.env.PORT || 4000;
 
 const db = new Database(process.env.MONGODB_URI, {
@@ -25,6 +27,9 @@ app.get("/server-status", (req, res) => {
 });
 
 // ...
+
+app.use(cors());
+
 app.use(express.json()); // middleware that parse JSON strings
 app.use("/test", testRoutes);
 
