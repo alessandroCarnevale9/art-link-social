@@ -25,7 +25,7 @@ app.get("/server-status", (req, res) => {
 });
 
 // ...
-app.use(express.json());
+app.use(express.json()); // middleware that parse JSON strings
 app.use("/test", testRoutes);
 
 
