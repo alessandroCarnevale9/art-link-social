@@ -1,12 +1,12 @@
-require(`dotenv`).config()
-const express = require(`express`)
-const Database = require(`./config/database`)
+require('dotenv').config()
+const express = require('express')
+const { logger } = require('./middleware/logger')
+const Database = require('./config/database')
 
-const testRoutes = require(`./routes/testRoute`)
 
 const app = express()
 
-const cors = require(`cors`)
+const cors = require('cors')
 
 const PORT = process.env.PORT || 4000
 
@@ -20,24 +20,19 @@ db.connect().catch((err) =>
 );
 
 
-// ...
-
-app.get(`/server-status`, (req, res) => {
-  res.status(200).json({ message: "Server is up and running!" });
+app.get('/server-status', (req, res) => {
+  res.status(200).json({ message: `Server is up and running!` });
 });
 
-// ...
-
+app.use(logger)
 app.use(cors())
-
 app.use(express.json()); // middleware that parse JSON strings
-app.use(`/test`, testRoutes)
+// app.use('/test', testRoutes)
 
-
-process.on(`SIGINT`, async () => {
+process.on('SIGINT', async () => {
   try {
     await db.disconnect()
-    console.log("Disconnected from database.")
+    console.log(`Disconnected from database.`)
     process.exit(0)
   } catch (err) {
     console.error(err)
