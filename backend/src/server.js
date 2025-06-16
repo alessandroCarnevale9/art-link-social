@@ -1,5 +1,6 @@
 require('dotenv').config()
 const express = require('express')
+const cookieParser = require('cookie-parser');
 const { logger } = require('./middleware/logger')
 const Database = require('./config/database')
 
@@ -26,8 +27,11 @@ app.get('/server-status', (req, res) => {
 
 app.use(logger)
 app.use(cors())
+app.use(cookieParser());
 app.use(express.json()); // middleware that parse JSON strings
-// app.use('/test', testRoutes)
+
+app.use('/auth', require('./routes/authRoutes'))
+app.use('/users', require('./routes/userRoutes'))
 
 process.on('SIGINT', async () => {
   try {
