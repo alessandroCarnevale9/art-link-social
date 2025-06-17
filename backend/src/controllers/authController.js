@@ -9,10 +9,6 @@ const asyncHandler = require('express-async-handler')
 const login = asyncHandler(async (req, res) => {
     const {username, password} = req.body
 
-    if(!username || !password) {
-        return res.status(400).json({message: `All fields are required`})
-    }
-
     const foundUser = await User.findOne({ username })
 
     if(!foundUser || !foundUser.isActive) {
@@ -58,12 +54,12 @@ const login = asyncHandler(async (req, res) => {
 // @route GET /auth/refresh
 // @access Public - because access token has expired
 const refresh = asyncHandler(async (req, res) => {
-  const token = req.cookies?.jwt;
+  const token = req.cookies?.jwt
   if (!token) return res.sendStatus(401); // Unauthorized
 
-  let payload;
+  let payload
   try {
-    payload = jwt.verify(token, process.env.REFRESH_TOKEN_SECRET);
+    payload = jwt.verify(token, process.env.REFRESH_TOKEN_SECRET)
   } catch (err) {
     // token scaduto o invalido: elimina cookie e 403
     res.clearCookie('jwt', {
@@ -71,18 +67,18 @@ const refresh = asyncHandler(async (req, res) => {
       sameSite: 'None',
       secure: true
     });
-    return res.sendStatus(403);
+    return res.sendStatus(403)
   }
 
   // payload corretto, cerco l'utente in DB
-  const user = await User.findOne({ username: payload.username }).exec();
+  const user = await User.findOne({ username: payload.username }).exec()
   if (!user) {
     res.clearCookie('jwt', {
       httpOnly: true,
       sameSite: 'None',
       secure: true
-    });
-    return res.sendStatus(401);
+    })
+    return res.sendStatus(401)
   }
 
   // genero nuovo access token
@@ -92,7 +88,7 @@ const refresh = asyncHandler(async (req, res) => {
     { expiresIn: '60s' } // test
   );
 
-  res.json({ accessToken });
+  res.json({ accessToken })
 });
 
 // @desc Logout

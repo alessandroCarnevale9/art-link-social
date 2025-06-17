@@ -2,14 +2,12 @@ const express = require('express')
 const router = express.Router()
 const usersController = require('../controllers/usersController')
 
-
-const verifyJWT = require('../middleware/verifyJWT')
-// router.use(verifyJWT)
+const validateFileds = require('../middleware/validation')
 
 router.route('/')
-    .get(verifyJWT, usersController.getAllUsers)
-    .post(usersController.createUser)
-    .patch(usersController.updateUser)
+    .get(usersController.getAllUsers)
+    .post(validateFileds, usersController.createUser)
+    .patch(validateFileds, usersController.updateUser)
     .delete(usersController.deleteUser)
 
 module.exports = router

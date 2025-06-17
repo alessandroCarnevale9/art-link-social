@@ -3,8 +3,10 @@ const router = express.Router()
 const authController = require('../controllers/authController')
 const loginLimiter = require('../middleware/loginLimiter')
 
+const validateFileds = require('../middleware/validation')
+
 router.route('/')
-    .post(loginLimiter, authController.login)
+    .post(loginLimiter, validateFileds, authController.login)
 
 router.route('/refresh')
     .get(authController.refresh)

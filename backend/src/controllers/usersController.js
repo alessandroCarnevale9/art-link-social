@@ -22,12 +22,8 @@ const getAllUsers = async (req, res) => {
 // @route POST /users
 // @access Private
 const createUser = async (req, res) => {
-  const { username, email, password, role } = req.body
-  if (!username || !email || !password) {
-    return res
-      .status(400)
-      .json({ error: `Username, email and password are needed.` })
-  }
+  
+  const { email, password, role } = req.body
 
   try {
     // genera hash della password
@@ -35,7 +31,6 @@ const createUser = async (req, res) => {
     const passwordHash = await bcrypt.hash(password, salt)
 
     const newUser = new User({
-      username,
       email,
       passwordHash,
       role,
@@ -63,11 +58,14 @@ const createUser = async (req, res) => {
 // @route PATCH /users
 // @access Private
 const updateUser = async (req, res) => {
-  const { id, username, email, password, role, isActive } = req.body
-  if (!id) return res.status(400).json({ error: `User ID is missing.` })
+  
+  const { id, email, password, role, isActive } = req.body
+  
+  if (!id)
+    return res.status(400).json({ error: `User ID is missing.` })
   
   try {
-    const updateData = { username, email, role, isActive }
+    const updateData = { email, role, isActive }
 
     // se viene fornita nuova password, ricrea l’hash
     if (password) {
