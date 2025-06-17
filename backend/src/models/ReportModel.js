@@ -1,41 +1,47 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
 const reportSchema = new Schema({
   reporterId: {
     type: Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+    ref: "User",
+    required: true,
   },
   targetType: {
     type: String,
-    enum: ['Artwork', 'Comment'],
-    required: true
+    enum: ["Artwork", "Comment"],
+    required: true,
   },
   targetId: {
     type: Schema.Types.ObjectId,
-    required: true
+    required: true,
   },
   reasonType: {
     type: String,
-    enum: ['spam', 'inappropriate_content', 'privacy_violation', 'intellectual_property', 'other'],
-    required: true
+    enum: [
+      "spam",
+      "inappropriate_content",
+      "privacy_violation",
+      "intellectual_property",
+      "other",
+    ],
+    required: true,
   },
   otherReason: String,
   status: {
     type: String,
-    enum: ['Open', 'Resolved', 'Ignored'],
-    default: 'Open'
+    enum: ["Open", "Resolved", "Ignored"],
+    default: "Open",
   },
   reportedAt: {
     type: Date,
-    default: Date.now
+    default: Date.now,
   },
   handledBy: {
     type: Schema.Types.ObjectId,
-    ref: 'User'
+    ref: "User",
   },
-  handledAt: Date
+  handledAt: Date,
 });
 
-module.exports = mongoose.model('Report', reportSchema);
+module.exports = mongoose.model("Report", reportSchema);

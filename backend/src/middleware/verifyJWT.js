@@ -18,7 +18,7 @@ const verifyJWT = (req, res, next) => {
       return res.status(403).json({ message: 'Forbidden' })
     }
     // popola req.user e req.role
-    req.user = decoded.UserInfo.username
+    req.user = decoded.UserInfo.email
     req.role = decoded.UserInfo.role
     next()
   })

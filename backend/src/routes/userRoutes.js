@@ -1,13 +1,17 @@
-const express = require('express')
-const router = express.Router()
-const usersController = require('../controllers/usersController')
+const express = require("express");
+const router = express.Router();
+const usersController = require("../controllers/usersController");
 
-const validateFileds = require('../middleware/validation')
+const validateFileds = require("../middleware/validation");
 
-router.route('/')
-    .get(usersController.getAllUsers)
-    .post(validateFileds, usersController.createUser)
-    .patch(validateFileds, usersController.updateUser)
-    .delete(usersController.deleteUser)
+router
+  .route("/")
+  .get(usersController.getAllUsers)
+  .post(validateFileds, usersController.createUser);
 
-module.exports = router
+router
+  .route("/:id")
+  .patch(validateFileds, usersController.updateUser)
+  .delete(usersController.deleteUser);
+
+module.exports = router;
