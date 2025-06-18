@@ -1,63 +1,13 @@
 const User = require("../models/UserModel");
 const bcrypt = require("bcrypt");
 const asyncHandler = require("express-async-handler");
-const validator = require("validator");
-
-/** Validazione per la creazione */
-function validateCreate({ email, password, role }) {
-  const errors = [];
-  const ALLOWED_ROLES = ["general", "admin"];
-
-  if (!email) errors.push("Email is required");
-  if (!password) errors.push("Password is required");
-  if (role && !ALLOWED_ROLES.includes(role)) {
-    errors.push("Invalid role");
-  }
-  if (email && !validator.isEmail(email)) {
-    errors.push("Email is not valid");
-  }
-  if (
-    password &&
-    !validator.isStrongPassword(password, {
-      minLength: 8,
-      minLowercase: 1,
-      minUppercase: 1,
-      minNumbers: 1,
-      minSymbols: 1,
-    })
-  ) {
-    errors.push(
-      "Password not strong enough (8+ chars, uppercase, lowercase, number, symbol)"
-    );
-  }
-  return errors;
-}
-
-/** Validazione per l'update (campi opzionali) */
-function validateUpdate({ email, password }) {
-  const errors = [];
-  if (email && !validator.isEmail(email)) {
-    errors.push("Email is not valid");
-  }
-  if (
-    password &&
-    !validator.isStrongPassword(password, {
-      minLength: 8,
-      minLowercase: 1,
-      minUppercase: 1,
-      minNumbers: 1,
-      minSymbols: 1,
-    })
-  ) {
-    errors.push("Password not strong enough");
-  }
-  return errors;
-}
 
 // @desc Get all users (admin only)
+// @route GET /users
+// @access Admin
 const getAllUsers = asyncHandler(async (req, res) => {
-  const requesterEmail = req.user;
-  const requesterRole = req.role;
+  const requesterEmail = req.userEmail;
+  const requesterRole = req.userRole;
   if (!requesterEmail || !requesterRole) {
     return res.sendStatus(401);
   }
@@ -73,22 +23,20 @@ const getAllUsers = asyncHandler(async (req, res) => {
 });
 
 // @desc Create a new user
+// @route POST /users
+// @access Admin or Public (e.g. registration)
 const createUser = asyncHandler(async (req, res) => {
   const { email, password, role } = req.body;
-  const errors = validateCreate({ email, password, role });
-  if (errors.length) {
-    return res.status(400).json({ error: errors });
-  }
 
-  // hash & save
+  // Hash password
   const salt = await bcrypt.genSalt(10);
   const passwordHash = await bcrypt.hash(password, salt);
-  const newUser = new User({
+
+  const newUser = await User.create({
     email: email.trim().toLowerCase(),
     passwordHash,
     role,
   });
-  await newUser.save();
 
   const userObj = newUser.toObject();
   delete userObj.passwordHash;
@@ -96,14 +44,16 @@ const createUser = asyncHandler(async (req, res) => {
 });
 
 // @desc Update a user
+// @route PATCH /users/:id
+// @access Admin or User self
 const updateUser = asyncHandler(async (req, res) => {
   const { id } = req.params;
   if (!id) {
     return res.status(400).json({ error: "User ID is missing." });
   }
 
-  const requesterEmail = req.user;
-  const requesterRole = req.role;
+  const requesterEmail = req.userEmail;
+  const requesterRole = req.userRole;
   if (!requesterEmail || !requesterRole) {
     return res.sendStatus(401);
   }
@@ -113,7 +63,7 @@ const updateUser = asyncHandler(async (req, res) => {
     return res.status(404).json({ error: "User not found." });
   }
 
-  // permessi: general solo sul proprio, admin su tutti
+  // Permissions: general on own, admin on any
   if (
     requesterRole !== "admin" &&
     targetUser.email.toLowerCase() !== requesterEmail.toLowerCase()
@@ -121,27 +71,21 @@ const updateUser = asyncHandler(async (req, res) => {
     return res.status(403).json({ error: "Forbidden" });
   }
 
-  const { email, password, isActive } = req.body;
-  const errors = validateUpdate({ email, password });
-  if (errors.length) {
-    return res.status(400).json({ error: errors });
-  }
-
   const updateData = {};
-  if (email) {
-    updateData.email = email.trim().toLowerCase();
+  if (req.body.email) {
+    updateData.email = req.body.email.trim().toLowerCase();
   }
-  if (password) {
+  if (req.body.password) {
     const salt = await bcrypt.genSalt(10);
-    updateData.passwordHash = await bcrypt.hash(password, salt);
+    updateData.passwordHash = await bcrypt.hash(req.body.password, salt);
   }
-  // solo admin può modificare isActive di un general
+  // Only admin can toggle isActive for general users
   if (
     requesterRole === "admin" &&
-    typeof isActive !== "undefined" &&
+    typeof req.body.isActive !== "undefined" &&
     targetUser.role === "general"
   ) {
-    updateData.isActive = isActive;
+    updateData.isActive = req.body.isActive;
   }
 
   const updated = await User.findByIdAndUpdate(id, updateData, {
@@ -152,10 +96,11 @@ const updateUser = asyncHandler(async (req, res) => {
     .lean();
 
   res.json(updated);
-  console.log(`Updated`);
 });
 
 // @desc Delete a user
+// @route DELETE /users/:id
+// @access Admin or User self
 const deleteUser = asyncHandler(async (req, res) => {
   const { id } = req.params;
   if (!id) {
@@ -167,17 +112,17 @@ const deleteUser = asyncHandler(async (req, res) => {
     return res.status(404).json({ error: "User not found." });
   }
 
-  const callerEmail = req.user;
-  const callerRole = req.role;
+  const requesterEmail = req.userEmail;
+  const requesterRole = req.userRole;
 
-  if (callerRole === "general") {
-    if (targetUser.email.toLowerCase() !== callerEmail.toLowerCase()) {
+  if (requesterRole === "general") {
+    if (targetUser.email.toLowerCase() !== requesterEmail.toLowerCase()) {
       return res.status(403).json({ error: "Forbidden" });
     }
-  } else if (callerRole === "admin") {
+  } else if (requesterRole === "admin") {
     if (
       targetUser.role === "admin" &&
-      targetUser.email.toLowerCase() !== callerEmail.toLowerCase()
+      targetUser.email.toLowerCase() !== requesterEmail.toLowerCase()
     ) {
       return res.status(403).json({ error: "Cannot delete another admin" });
     }

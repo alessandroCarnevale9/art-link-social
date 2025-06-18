@@ -1,27 +1,24 @@
-const jwt = require('jsonwebtoken')
+// middleware/verifyJWT.js
+const jwt = require("jsonwebtoken");
+const asyncHandler = require("express-async-handler");
 
-const verifyJWT = (req, res, next) => {
-  // authorization header è sempre lowercase in Express
-  const authHeader = req.headers.authorization;
+const verifyJWT = asyncHandler(async (req, res, next) => {
+  const authHeader = req.headers.authorization || req.headers.Authorization;
+  if (!authHeader?.startsWith("Bearer "))
+    return res.status(401).json({ message: "Token mancante" });
 
-  // controlla che esista e inizi con "Bearer "
-  if (!authHeader?.startsWith('Bearer ')) {
-    return res.status(401).json({ message: 'Unauthorized' })
+  const token = authHeader.split(" ")[1];
+  let decoded;
+  try {
+    decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+  } catch (err) {
+    return res.status(403).json({ message: "Token non valido" });
   }
 
-  // ricava il token
-  const token = authHeader.split(' ')[1]
+  // estraiamo email e ruolo dal payload
+  req.userEmail = decoded.UserInfo.email;
+  req.userRole = decoded.UserInfo.role;
+  next();
+});
 
-  // verifica il token
-  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
-    if (err) {
-      return res.status(403).json({ message: 'Forbidden' })
-    }
-    // popola req.user e req.role
-    req.user = decoded.UserInfo.email
-    req.role = decoded.UserInfo.role
-    next()
-  })
-};
-
-module.exports = verifyJWT
+module.exports = verifyJWT;

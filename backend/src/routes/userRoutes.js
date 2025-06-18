@@ -1,17 +1,19 @@
 const express = require("express");
 const router = express.Router();
-const usersController = require("../controllers/usersController");
-
+const usersCtrl = require("../controllers/usersController");
 const verifyJWT = require("../middleware/verifyJWT");
+const {
+  validateUser,
+  validateUserUpdate,
+} = require("../middleware/userValidation");
 
-router
-  .route("/")
-  .get(verifyJWT, usersController.getAllUsers)
-  .post(usersController.createUser);
+router.post("register", verifyJWT, validateUser, usersCtrl.createUser);
+
+router.route("/").get(verifyJWT, usersCtrl.getAllUsers); // solo admin
 
 router
   .route("/:id")
-  .patch(verifyJWT, usersController.updateUser)
-  .delete(verifyJWT, usersController.deleteUser);
+  .patch(verifyJWT, validateUserUpdate, usersCtrl.updateUser)
+  .delete(verifyJWT, usersCtrl.deleteUser);
 
 module.exports = router;

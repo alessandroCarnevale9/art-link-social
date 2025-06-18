@@ -1,107 +1,63 @@
 const User = require("../models/UserModel");
 const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
 const asyncHandler = require("express-async-handler");
+const {
+  generateAccessToken,
+  generateRefreshToken,
+  verifyRefreshToken,
+  attachRefreshTokenCookie,
+  clearRefreshTokenCookie,
+} = require("../services/tokenService");
 
-// @desc Login
-// @route POST /auth
-// @access Public
+// POST /auth/login
 const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
+  const user = await User.findOne({ email }).exec();
+  if (!user || !user.isActive)
+    return res.status(401).json({ message: "Unauthorized" });
 
-  const foundUser = await User.findOne({ email });
+  const match = await bcrypt.compare(password, user.passwordHash);
+  if (!match) return res.status(401).json({ message: "Unauthorized" });
 
-  if (!foundUser || !foundUser.isActive) {
-    return res.status(401).json({ message: `Unauthorized` });
-  }
-
-  const match = await bcrypt.compare(password, foundUser.passwordHash);
-
-  if (!match) return res.status(401).json({ message: `Unauthorized` });
-
-  const accessToken = jwt.sign(
-    {
-      UserInfo: {
-        email: foundUser.email,
-        role: foundUser.role,
-      },
-    },
-    process.env.ACCESS_TOKEN_SECRET,
-    { expiresIn: "60s" } // test
-  );
-
-  const refreshToken = jwt.sign(
-    { email: foundUser.email },
-    process.env.REFRESH_TOKEN_SECRET,
-    { expiresIn: "1d" } // test
-  );
-
-  // Create secure cookie with refresh token
-  res.cookie("jwt", refreshToken, {
-    httpOnly: true, // accessible only by web server
-    secure: true, //https
-    sameSite: "None", // cross-site cookie
-    maxAge: 7 * 24 * 60 * 60 * 1000, // cookie expiry: set to match the refresh token
+  const accessToken = generateAccessToken({
+    UserInfo: { email: user.email, role: user.role },
   });
+  const refreshToken = generateRefreshToken({ email: user.email });
 
-  // send accessToken containing email and role
-  res.json({ accessToken });
+  attachRefreshTokenCookie(res, refreshToken);
+  return res.json({ accessToken });
 });
 
-// @desc Refresh
-// @route GET /auth/refresh
-// @access Public - because access token has expired
+// GET /auth/refresh
 const refresh = asyncHandler(async (req, res) => {
   const token = req.cookies?.jwt;
-  if (!token) return res.sendStatus(401); // Unauthorized
+  if (!token) return res.sendStatus(401);
 
   let payload;
   try {
-    payload = jwt.verify(token, process.env.REFRESH_TOKEN_SECRET);
+    payload = verifyRefreshToken(token);
   } catch (err) {
-    // token scaduto o invalido: elimina cookie e 403
-    res.clearCookie("jwt", {
-      httpOnly: true,
-      sameSite: "None",
-      secure: true,
-    });
+    clearRefreshTokenCookie(res);
     return res.sendStatus(403);
   }
 
-  // payload corretto, cerco l'utente in DB
   const user = await User.findOne({ email: payload.email }).exec();
   if (!user) {
-    res.clearCookie("jwt", {
-      httpOnly: true,
-      sameSite: "None",
-      secure: true,
-    });
+    clearRefreshTokenCookie(res);
     return res.sendStatus(401);
   }
 
-  // genero nuovo access token
-  const accessToken = jwt.sign(
-    { UserInfo: { email: user.email, role: user.role } },
-    process.env.ACCESS_TOKEN_SECRET,
-    { expiresIn: "60s" } // test
-  );
-
-  res.json({ accessToken });
+  const accessToken = generateAccessToken({
+    UserInfo: { email: user.email, role: user.role },
+  });
+  return res.json({ accessToken });
 });
 
-// @desc Logout
-// @route POST /auth/logout
-// @access Public - just to clear cookie if exists
+// POST /auth/logout
 const logout = (req, res) => {
-  const cookies = req.cookies;
-  if (!cookies?.jwt) return res.status(204); // no content
-
-  res.clearCookie("jwt", { httpOnly: true, secure: true, sameSite: "None" });
-  res.json({ message: `Cookie cleared` });
+  if (!req.cookies?.jwt) return res.sendStatus(204);
+  clearRefreshTokenCookie(res);
+  return res.sendStatus(204);
 };
 
-module.exports = {
-  login,
-  refresh,
-  logout,
-};
+module.exports = { login, refresh, logout };
