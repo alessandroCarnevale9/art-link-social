@@ -152,7 +152,7 @@ const updateUser = asyncHandler(async (req, res) => {
     .lean();
 
   res.json(updated);
-  console.log(`Updated`)
+  console.log(`Updated`);
 });
 
 // @desc Delete a user
