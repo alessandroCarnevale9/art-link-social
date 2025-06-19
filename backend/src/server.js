@@ -28,8 +28,8 @@ app.use(cors());
 app.use(cookieParser());
 app.use(express.json()); // middleware that parse JSON strings
 
-app.use("/auth", require("./routes/authRoutes"));
-app.use("/users", require("./routes/userRoutes"));
+app.use("/api/auth", require("./routes/authRoutes"));
+app.use("/api/users", require("./routes/userRoutes"));
 
 process.on("SIGINT", async () => {
   try {
