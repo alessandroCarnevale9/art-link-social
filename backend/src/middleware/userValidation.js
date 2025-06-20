@@ -1,3 +1,4 @@
+const ApiError = require("../utils/ApiError");
 const {
   validateEmail,
   validatePassword,
@@ -13,7 +14,7 @@ function validateUser(req, res, next) {
     validateRole(role),
   ].filter(Boolean);
 
-  if (errors.length) return res.status(400).json({ errors });
+  if (errors.length) throw new ApiError(400, errors);
   next();
 }
 
@@ -29,7 +30,7 @@ function validateUserUpdate(req, res, next) {
       : undefined,
   ].filter(Boolean);
 
-  if (errors.length) return res.status(400).json({ errors });
+  if (errors.length) throw new ApiError(400, errors);
   next();
 }
 

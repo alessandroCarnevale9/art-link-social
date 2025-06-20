@@ -1,6 +1,7 @@
 const User = require("../models/UserModel");
 const bcrypt = require("bcrypt");
 const asyncHandler = require("express-async-handler");
+const ApiError = require("../utils/ApiError");
 
 // @desc Get all users (admin only)
 // @route GET /users
@@ -9,15 +10,15 @@ const getAllUsers = asyncHandler(async (req, res) => {
   const requesterEmail = req.userEmail;
   const requesterRole = req.userRole;
   if (!requesterEmail || !requesterRole) {
-    return res.sendStatus(401);
+    throw new ApiError(401, "Unauthorized");
   }
   if (requesterRole !== "admin") {
-    return res.status(403).json({ error: "Forbidden" });
+    throw new ApiError(403, "Forbidden");
   }
 
   const users = await User.find().select("-passwordHash").lean();
   if (!users.length) {
-    return res.status(404).json({ error: "No users found" });
+    throw new ApiError(404, "No users found");
   }
   res.json(users);
 });
@@ -49,18 +50,18 @@ const createUser = asyncHandler(async (req, res) => {
 const updateUser = asyncHandler(async (req, res) => {
   const { id } = req.params;
   if (!id) {
-    return res.status(400).json({ error: "User ID is missing." });
+    throw new ApiError(400, "User ID is missing.");
   }
 
   const requesterEmail = req.userEmail;
   const requesterRole = req.userRole;
   if (!requesterEmail || !requesterRole) {
-    return res.sendStatus(401);
+    throw new ApiError(401, "Unauthorized");
   }
 
   const targetUser = await User.findById(id).exec();
   if (!targetUser) {
-    return res.status(404).json({ error: "User not found." });
+    throw new ApiError(404, "User not found.");
   }
 
   // Permissions: general on own, admin on any
@@ -68,7 +69,7 @@ const updateUser = asyncHandler(async (req, res) => {
     requesterRole !== "admin" &&
     targetUser.email.toLowerCase() !== requesterEmail.toLowerCase()
   ) {
-    return res.status(403).json({ error: "Forbidden" });
+    throw new ApiError(403, "Forbidden");
   }
 
   const updateData = {};
@@ -104,12 +105,12 @@ const updateUser = asyncHandler(async (req, res) => {
 const deleteUser = asyncHandler(async (req, res) => {
   const { id } = req.params;
   if (!id) {
-    return res.status(400).json({ error: "User ID is missing." });
+    throw new ApiError(400, "User ID is missing.");
   }
 
   const targetUser = await User.findById(id).exec();
   if (!targetUser) {
-    return res.status(404).json({ error: "User not found." });
+    throw new ApiError(404, "User not found.");
   }
 
   const requesterEmail = req.userEmail;
@@ -117,17 +118,17 @@ const deleteUser = asyncHandler(async (req, res) => {
 
   if (requesterRole === "general") {
     if (targetUser.email.toLowerCase() !== requesterEmail.toLowerCase()) {
-      return res.status(403).json({ error: "Forbidden" });
+      throw new ApiError(403, "Forbidden");
     }
   } else if (requesterRole === "admin") {
     if (
       targetUser.role === "admin" &&
       targetUser.email.toLowerCase() !== requesterEmail.toLowerCase()
     ) {
-      return res.status(403).json({ error: "Cannot delete another admin" });
+      throw new ApiError(403, "Cannot delete another admin");
     }
   } else {
-    return res.status(400).json({ error: "Invalid role" });
+    throw new ApiError(400, "Invalid role");
   }
 
   await targetUser.deleteOne();

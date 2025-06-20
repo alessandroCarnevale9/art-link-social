@@ -8,16 +8,16 @@ const {
   attachRefreshTokenCookie,
   clearRefreshTokenCookie,
 } = require("../services/tokenService");
+const ApiError = require("../utils/ApiError");
 
 // POST /auth/login
 const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
   const user = await User.findOne({ email }).exec();
-  if (!user || !user.isActive)
-    return res.status(401).json({ message: "Unauthorized" });
+  if (!user || !user.isActive) throw new ApiError(401, "Unauthorized");
 
   const match = await bcrypt.compare(password, user.passwordHash);
-  if (!match) return res.status(401).json({ message: "Unauthorized" });
+  if (!match) throw new ApiError(401, "Unauthorized");
 
   const accessToken = generateAccessToken({
     UserInfo: { email: user.email, role: user.role },
@@ -31,20 +31,20 @@ const login = asyncHandler(async (req, res) => {
 // GET /auth/refresh
 const refresh = asyncHandler(async (req, res) => {
   const token = req.cookies?.jwt;
-  if (!token) return res.sendStatus(401);
+  if (!token) throw new ApiError(401, "Unauthorized");
 
   let payload;
   try {
     payload = verifyRefreshToken(token);
   } catch (err) {
     clearRefreshTokenCookie(res);
-    return res.sendStatus(403);
+    throw new ApiError(403, "Forbidden");
   }
 
   const user = await User.findOne({ email: payload.email }).exec();
   if (!user) {
     clearRefreshTokenCookie(res);
-    return res.sendStatus(401);
+    throw new ApiError(401, "Unauthorized");
   }
 
   const accessToken = generateAccessToken({
@@ -56,6 +56,7 @@ const refresh = asyncHandler(async (req, res) => {
 // POST /auth/logout
 const logout = (req, res) => {
   if (!req.cookies?.jwt) return res.sendStatus(204);
+
   clearRefreshTokenCookie(res);
   return res.sendStatus(204);
 };

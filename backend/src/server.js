@@ -2,6 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const cookieParser = require("cookie-parser");
 const { logger } = require("./middleware/logger");
+const errorHandler = require("./middleware/errorHandler");
 const Database = require("./config/database");
 
 const app = express();
@@ -41,5 +42,7 @@ process.on("SIGINT", async () => {
     process.exit(1);
   }
 });
+
+app.use(errorHandler);
 
 app.listen(PORT, () => console.log(`Server up and running on port ${PORT}!`));

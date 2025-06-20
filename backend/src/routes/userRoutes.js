@@ -7,7 +7,7 @@ const {
   validateUserUpdate,
 } = require("../middleware/userValidation");
 
-router.post("register", verifyJWT, validateUser, usersCtrl.createUser);
+router.post("/register", validateUser, usersCtrl.createUser);
 
 router.route("/").get(verifyJWT, usersCtrl.getAllUsers); // solo admin
 

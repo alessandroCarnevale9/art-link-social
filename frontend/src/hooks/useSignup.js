@@ -2,23 +2,24 @@ import { useState } from "react";
 import { useAuthContext } from "./useAuthContext";
 
 export const useSignup = () => {
-    const [error, setError] = useState(null)
+    const [error, setError] = useState(null) // ARRAY DI ERRORI, CONTROLLARE LA COERENZA DEL CODICE NEL SERVER
     const [isLoading, setIsLoading] = useState(null)
     const { dispatch } = useAuthContext()
 
-    const signup = async (email, password) => {
+    const signup = async (email, password, role) => {
         setIsLoading(true)
         setError(null)
 
-        const response = await fetch('/api/auth/login', {
+        const response = await fetch('/api/users/register', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({email, password})
+            body: JSON.stringify({email, password, role})
         })
 
         const json = await response.json()
 
         if(!response.ok) {
+            console.log(`createUser NOT OK response: `, json) // *** DEBUG ***
             setIsLoading(false)
             setError(json.error)
         }
