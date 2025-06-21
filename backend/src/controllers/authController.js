@@ -25,11 +25,9 @@ const login = asyncHandler(async (req, res) => {
 
   attachRefreshTokenCookie(res, refreshToken);
 
-  const userObj = user.toObject();
-  delete userObj.passwordHash;
-
+  const { _id, email: userEmail, role } = user;
   res.status(201).json({
-    userData: userObj,
+    userData: { id: _id, email: userEmail, role },
     accessToken,
   });
 });
@@ -57,11 +55,9 @@ const refresh = asyncHandler(async (req, res) => {
     UserInfo: { email: user.email, role: user.role },
   });
 
-  const userObj = user.toObject();
-  delete userObj.passwordHash;
-
+  const { _id, email: userEmail, role } = user;
   res.status(201).json({
-    userData: userObj,
+    userData: { id: _id, email: userEmail, role },
     accessToken,
   });
 });

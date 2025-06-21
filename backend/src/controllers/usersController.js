@@ -56,11 +56,9 @@ const createUser = asyncHandler(async (req, res) => {
 
   attachRefreshTokenCookie(res, refreshToken);
 
-  const userObj = newUser.toObject();
-  delete userObj.passwordHash;
-
+  const { _id, email: userEmail, role: userRole } = newUser;
   res.status(201).json({
-    userData: userObj,
+    userData: { id: _id, email: userEmail, userRole },
     accessToken,
   });
 });
