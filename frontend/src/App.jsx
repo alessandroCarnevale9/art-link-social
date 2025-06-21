@@ -4,6 +4,7 @@ import Home from "./pages/Home";
 import Navbar from "./components/Navbar";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import AdminHome from "./pages/AdminHome";
 
 const App = () => {
 
@@ -15,7 +16,7 @@ const App = () => {
         <Navbar />
         <div className="pages">
           <Routes>
-            <Route path="/" element={ user ? <Home /> : <Navigate to="/login" />} />
+            <Route path="/" element={ user ? (user.userData.role === 'admin' ? <AdminHome /> : <Home />) : <Navigate to="/login" />} />
             <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
             <Route path="/signup" element={!user ? <Signup /> : <Navigate to="/" />} />
           </Routes>
