@@ -20,7 +20,7 @@ const login = asyncHandler(async (req, res) => {
   if (!match) throw new ApiError(401, "Unauthorized");
 
   const payload = { UserInfo: { email: user.email, role: user.role } };
-  const accessToken = generateAccessToken({ payload });
+  const accessToken = generateAccessToken(payload);
   const refreshToken = generateRefreshToken({ email: user.email });
 
   attachRefreshTokenCookie(res, refreshToken);
