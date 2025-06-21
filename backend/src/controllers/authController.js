@@ -19,13 +19,19 @@ const login = asyncHandler(async (req, res) => {
   const match = await bcrypt.compare(password, user.passwordHash);
   if (!match) throw new ApiError(401, "Unauthorized");
 
-  const accessToken = generateAccessToken({
-    UserInfo: { email: user.email, role: user.role },
-  });
+  const payload = { UserInfo: { email: user.email, role: user.role } };
+  const accessToken = generateAccessToken({ payload });
   const refreshToken = generateRefreshToken({ email: user.email });
 
   attachRefreshTokenCookie(res, refreshToken);
-  return res.json({ accessToken });
+
+  const userObj = user.toObject();
+  delete userObj.passwordHash;
+
+  res.status(201).json({
+    userData: userObj,
+    accessToken,
+  });
 });
 
 // GET /auth/refresh
@@ -50,7 +56,14 @@ const refresh = asyncHandler(async (req, res) => {
   const accessToken = generateAccessToken({
     UserInfo: { email: user.email, role: user.role },
   });
-  return res.json({ accessToken });
+
+  const userObj = user.toObject();
+  delete userObj.passwordHash;
+
+  res.status(201).json({
+    userData: userObj,
+    accessToken,
+  });
 });
 
 // POST /auth/logout

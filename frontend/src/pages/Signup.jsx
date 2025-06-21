@@ -5,7 +5,7 @@ const Signup = () => {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [role, setRole] = useState('general')
-    const {signup, error, isLoading} = useSignup()
+    const {signup, errors, isLoading} = useSignup()
 
 
     const handleSubmit = async (e) => {
@@ -25,7 +25,7 @@ const Signup = () => {
             <input type="password" onChange={(e) => setPassword(e.target.value)} value={password}/>
         
         <button disabled={isLoading}>Sign up</button>
-        {error && <div className="error">{error}</div>}
+        {errors && <div className="error">{errors}</div>}
         </form>
     )
 }

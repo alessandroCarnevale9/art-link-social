@@ -1,6 +1,11 @@
 const User = require("../models/UserModel");
 const bcrypt = require("bcrypt");
 const asyncHandler = require("express-async-handler");
+const {
+  generateAccessToken,
+  generateRefreshToken,
+  attachRefreshTokenCookie,
+} = require("../services/tokenService");
 const ApiError = require("../utils/ApiError");
 
 // @desc Get all users (admin only)
@@ -29,19 +34,35 @@ const getAllUsers = asyncHandler(async (req, res) => {
 const createUser = asyncHandler(async (req, res) => {
   const { email, password, role } = req.body;
 
-  // Hash password
+  const existing = await User.findOne({ email }).exec();
+  if (existing) {
+    throw new ApiError(409, `User with email ${email} already exists.`);
+  }
+
   const salt = await bcrypt.genSalt(10);
   const passwordHash = await bcrypt.hash(password, salt);
 
+  // Creazione utente nel DB
   const newUser = await User.create({
     email: email.trim().toLowerCase(),
     passwordHash,
     role,
   });
 
+  // Generazione token
+  const payload = { UserInfo: { email: newUser.email, role: newUser.role } };
+  const accessToken = generateAccessToken(payload);
+  const refreshToken = generateRefreshToken({ email: newUser.email });
+
+  attachRefreshTokenCookie(res, refreshToken);
+
   const userObj = newUser.toObject();
   delete userObj.passwordHash;
-  res.status(201).json(userObj);
+
+  res.status(201).json({
+    userData: userObj,
+    accessToken,
+  });
 });
 
 // @desc Update a user
