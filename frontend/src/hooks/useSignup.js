@@ -13,6 +13,7 @@ export const useSignup = () => {
     const response = await fetch("/api/users/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "include",
       body: JSON.stringify({ email, password, role }),
     });
 
@@ -21,16 +22,16 @@ export const useSignup = () => {
     if (!response.ok) {
       setIsLoading(false);
       setErrors(json.errors);
+      return;
     }
-    if (response.ok) {
-      // save JWT to local storage
-      localStorage.setItem("user", JSON.stringify(json));
 
-      // update the auth context
-      dispatch({ type: "LOGIN", payload: json });
+    // save JWT to local storage
+    // localStorage.setItem("user", JSON.stringify(json));
 
-      setIsLoading(false);
-    }
+    // update the auth context
+    dispatch({ type: "LOGIN", payload: json });
+
+    setIsLoading(false);
   };
 
   return { signup, isLoading, errors };

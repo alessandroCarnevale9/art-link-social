@@ -3,9 +3,14 @@ import { useAuthContext } from "./useAuthContext";
 export const useLogout = () => {
   const { dispatch } = useAuthContext();
 
-  const logout = () => {
+  const logout = async () => {
     // remove user JWT from local storage
-    localStorage.removeItem("user");
+    // localStorage.removeItem("user");
+
+    await fetch("/api/auth/logout", {
+      method: "POST",
+      credentials: "include", // manda il cookie HTTP-only
+    });
 
     // dispatch logout action
     dispatch({ type: "LOGOUT" });

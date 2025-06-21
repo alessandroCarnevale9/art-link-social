@@ -14,19 +14,33 @@ export const authReducer = (state, action) => {
 };
 
 export const AuthContextProvider = ({ children }) => {
-  const [state, dispatch] = useReducer(authReducer, {
-    user: null,
-  });
+  const [state, dispatch] = useReducer(authReducer, { user: null });
 
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem("user"));
+    const tryRefresh = async () => {
+      try {
+        const res = await fetch("/api/auth/refresh", {
+          method: "GET",
+          credentials: "include",
+        });
 
-    if (user) {
-      dispatch({ type: "LOGIN", payload: user });
-    }
-  }, []);
+        if (!res.ok) {
+          return dispatch({ type: "LOGOUT" });
+        }
 
-  console.log("AuthContext state: ", state);
+        const json = await res.json();
+
+        dispatch({ type: "LOGIN", payload: json });
+      } catch (err) {
+        console.error("Refresh fallito:", err);
+        dispatch({ type: "LOGOUT" });
+      }
+    };
+
+    tryRefresh();
+  }, [dispatch]);
+
+  console.log("AuthContext state:", state);
 
   return (
     <AuthContext.Provider value={{ ...state, dispatch }}>

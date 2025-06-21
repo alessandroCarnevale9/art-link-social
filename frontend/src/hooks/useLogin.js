@@ -6,13 +6,14 @@ export const useLogin = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { dispatch } = useAuthContext();
 
-  const login = async (email, password, role) => {
+  const login = async (email, password) => {
     setIsLoading(true);
     setErrors([]);
 
     const response = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "include", // include i cookies
       body: JSON.stringify({ email, password }),
     });
 
@@ -21,17 +22,16 @@ export const useLogin = () => {
     if (!response.ok) {
       setIsLoading(false);
       setErrors(json.errors);
+      return;
     }
 
-    if (response.ok) {
-      // save JWT to local storage
-      localStorage.setItem("user", JSON.stringify(json));
+    // save JWT to local storage ---> NON È NECESSARIO PERCHÈ HO IL COOKIE
+    // localStorage.setItem("user", JSON.stringify(json));
 
-      // update the auth context
-      dispatch({ type: "LOGIN", payload: json });
+    // update the auth context
+    dispatch({ type: "LOGIN", payload: json });
 
-      setIsLoading(false);
-    }
+    setIsLoading(false);
   };
 
   return { login, isLoading, errors };
