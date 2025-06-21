@@ -5,7 +5,7 @@ export const useLogout = () => {
 
   const logout = async () => {
     // remove user JWT from local storage
-    // localStorage.removeItem("user");
+    localStorage.removeItem("jwt");
 
     await fetch("/api/auth/logout", {
       method: "POST",

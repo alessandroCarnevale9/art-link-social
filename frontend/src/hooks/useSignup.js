@@ -26,7 +26,7 @@ export const useSignup = () => {
     }
 
     // save JWT to local storage
-    // localStorage.setItem("user", JSON.stringify(json));
+    localStorage.setItem("jwt", JSON.stringify(json));
 
     // update the auth context
     dispatch({ type: "LOGIN", payload: json });

@@ -23,13 +23,10 @@ export const AuthContextProvider = ({ children }) => {
           method: "GET",
           credentials: "include",
         });
-
         if (!res.ok) {
           return dispatch({ type: "LOGOUT" });
         }
-
         const json = await res.json();
-
         dispatch({ type: "LOGIN", payload: json });
       } catch (err) {
         console.error("Refresh fallito:", err);
@@ -37,6 +34,23 @@ export const AuthContextProvider = ({ children }) => {
       }
     };
 
+    // Provo a leggere da localStorage
+    const raw = localStorage.getItem("jwt");
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        // parsed deve essere { userData: {...}, accessToken: "..." }
+        if (parsed?.userData && parsed?.accessToken) {
+          dispatch({ type: "LOGIN", payload: parsed });
+          return; // non fare il refresh
+        }
+      } catch {
+        // se il JSON è malformato, rimuovo e proseguo al refresh
+        localStorage.removeItem("jwt");
+      }
+    }
+
+    // 2) Se non ho un JWT valido in localStorage, provo il refresh via cookie
     tryRefresh();
   }, [dispatch]);
 

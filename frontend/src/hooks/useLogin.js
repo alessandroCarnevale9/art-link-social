@@ -25,8 +25,8 @@ export const useLogin = () => {
       return;
     }
 
-    // save JWT to local storage ---> NON È NECESSARIO PERCHÈ HO IL COOKIE
-    // localStorage.setItem("user", JSON.stringify(json));
+    // save JWT to local storage
+    localStorage.setItem("jwt", JSON.stringify(json));
 
     // update the auth context
     dispatch({ type: "LOGIN", payload: json });
