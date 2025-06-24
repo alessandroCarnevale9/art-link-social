@@ -8,6 +8,7 @@ const {
   attachRefreshTokenCookie,
   clearRefreshTokenCookie,
 } = require("../services/tokenService");
+const { buildUserInfo } = require("../utils/userHelpers");
 const ApiError = require("../utils/ApiError");
 
 // POST /auth/login
@@ -19,17 +20,15 @@ const login = asyncHandler(async (req, res) => {
   const match = await bcrypt.compare(password, user.passwordHash);
   if (!match) throw new ApiError(401, "Unauthorized");
 
-  const payload = { UserInfo: { email: user.email, role: user.role } };
-  const accessToken = generateAccessToken(payload);
-  const refreshToken = generateRefreshToken({ email: user.email });
+  // Costruisci payload e userData in base al ruolo
+  const { payload, userData } = buildUserInfo(user);
 
+  // Generazione token
+  const accessToken  = generateAccessToken(payload);
+  const refreshToken = generateRefreshToken(payload.UserInfo);
   attachRefreshTokenCookie(res, refreshToken);
 
-  const { _id, email: userEmail, role } = user;
-  res.status(201).json({
-    userData: { id: _id, email: userEmail, role },
-    accessToken,
-  });
+  res.status(201).json({ userData, accessToken });
 });
 
 // GET /auth/refresh
@@ -37,35 +36,34 @@ const refresh = asyncHandler(async (req, res) => {
   const token = req.cookies?.jwt;
   if (!token) throw new ApiError(401, "Unauthorized");
 
-  let payload;
+  let decoded;
   try {
-    payload = verifyRefreshToken(token);
+    decoded = verifyRefreshToken(token);
   } catch (err) {
     clearRefreshTokenCookie(res);
     throw new ApiError(403, "Forbidden");
   }
 
-  const user = await User.findOne({ email: payload.email }).exec();
+  // decoded.UserInfo deve contenere id, email, role
+  const user = await User.findById(decoded.UserInfo.id).exec();
   if (!user) {
     clearRefreshTokenCookie(res);
     throw new ApiError(401, "Unauthorized");
   }
 
-  const accessToken = generateAccessToken({
-    UserInfo: { email: user.email, role: user.role },
-  });
+  // Ricostruisci payload e userData
+  const { payload, userData } = buildUserInfo(user);
 
-  const { _id, email: userEmail, role } = user;
-  res.status(201).json({
-    userData: { id: _id, email: userEmail, role },
-    accessToken,
-  });
+  const accessToken = generateAccessToken(payload);
+  // Puoi scegliere se rigenerare o riutilizzare lo stesso refresh token
+  attachRefreshTokenCookie(res, token);
+
+  res.status(201).json({ userData, accessToken });
 });
 
 // POST /auth/logout
 const logout = (req, res) => {
   if (!req.cookies?.jwt) return res.sendStatus(204);
-
   clearRefreshTokenCookie(res);
   return res.sendStatus(204);
 };

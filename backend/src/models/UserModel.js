@@ -24,6 +24,37 @@ const userSchema = new Schema(
       default: true,
     },
 
+    // Richiesto SOLO se role === 'general'
+    firstName: {
+      type: String,
+      trim: true,
+      required: function () {
+        return this.role === "general";
+      },
+      minlength: 2,
+      maxlength: 30,
+    },
+    lastName: {
+      type: String,
+      trim: true,
+      required: function () {
+        return this.role === "general";
+      },
+      minlength: 2,
+      maxlength: 30,
+    },
+    bio: {
+      type: String,
+      trim: true,
+      maxlength: 160,
+      default: "",
+    },
+    profileImage: {
+      type: String,
+      trim: true,
+      default: "https://tuo-dominio.com/images/default-profile.png",
+    },
+
     artworks: [{ type: Schema.Types.ObjectId, ref: "Artwork" }],
     comments: [{ type: Schema.Types.ObjectId, ref: "Comment" }],
     likedArtworks: [{ type: Schema.Types.ObjectId, ref: "Artwork" }],

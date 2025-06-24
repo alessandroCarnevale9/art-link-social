@@ -2,11 +2,11 @@ const express = require("express");
 const router = express.Router();
 const authController = require("../controllers/authController");
 const loginLimiter = require("../middleware/loginLimiter");
-const { validateUser } = require("../middleware/userValidation");
+const { validateUser, validateUserLogIn } = require("../middleware/userValidation");
 
 router.post(
   "/login",
-  validateUser,
+  validateUserLogIn,
   loginLimiter,
   authController.login
 );

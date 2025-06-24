@@ -7,38 +7,67 @@ const {
   attachRefreshTokenCookie,
 } = require("../services/tokenService");
 const ApiError = require("../utils/ApiError");
+const { buildUserInfo } = require("../utils/userHelpers");
 
 // @desc Get all users (admin only)
 // @route GET /users
 // @access Admin
 const getAllUsers = asyncHandler(async (req, res) => {
-  const requesterEmail = req.userEmail;
-  const requesterRole = req.userRole;
-  if (!requesterEmail || !requesterRole) {
-    throw new ApiError(401, "Unauthorized");
-  }
-  if (requesterRole !== "admin") {
+  if (req.userRole !== "admin") {
     throw new ApiError(403, "Forbidden");
   }
-
+  // prendo tutti gli utenti e tolgo passwordHash
   const users = await User.find().select("-passwordHash").lean();
-  if (!users.length) {
-    throw new ApiError(404, "No users found");
+  // costruisco userData per ognuno
+  const list = users.map((u) => buildUserInfo(u).userData);
+  res.json(list);
+});
+
+// @desc Get a user
+// @route GET /users/:id
+// @access Admin or general (self or other general)
+const getUser = asyncHandler(async (req, res) => {
+  const targetUser = await User.findById(req.params.id)
+    .select("-passwordHash")
+    .lean();
+  if (!targetUser) {
+    throw new ApiError(404, "User not found.");
   }
-  res.json(users);
+
+  if (req.userRole === "general") {
+    const isSelf =
+      targetUser.email.toLowerCase() === req.userEmail.toLowerCase();
+    if (!isSelf && targetUser.role !== "general") {
+      throw new ApiError(403, "Forbidden");
+    }
+  }
+
+  // qui uso buildUserInfo per includere o meno i campi general
+  const { userData } = buildUserInfo(targetUser);
+  res.json(userData);
 });
 
 // @desc Create a new user
 // @route POST /users
 // @access Admin or Public (e.g. registration)
 const createUser = asyncHandler(async (req, res) => {
-  const { email, password, role } = req.body;
+  const {
+    email,
+    password,
+    role,
+    firstName,
+    lastName,
+    bio = "",
+    profileImage,
+  } = req.body;
 
+  // Controllo unicità email
   const existing = await User.findOne({ email }).exec();
   if (existing) {
     throw new ApiError(409, `User with email ${email} already exists.`);
   }
 
+  // Hash della password
   const salt = await bcrypt.genSalt(10);
   const passwordHash = await bcrypt.hash(password, salt);
 
@@ -47,20 +76,22 @@ const createUser = asyncHandler(async (req, res) => {
     email: email.trim().toLowerCase(),
     passwordHash,
     role,
+    firstName,
+    lastName,
+    bio,
+    profileImage,
   });
+
+  // Genera payload e userData in base al ruolo
+  const { payload, userData } = buildUserInfo(newUser);
 
   // Generazione token
-  const payload = { UserInfo: { email: newUser.email, role: newUser.role } };
-  const accessToken = generateAccessToken(payload);
-  const refreshToken = generateRefreshToken({ email: newUser.email });
-
+  const accessToken  = generateAccessToken(payload);
+  const refreshToken = generateRefreshToken(payload.UserInfo);
   attachRefreshTokenCookie(res, refreshToken);
 
-  const { _id, email: userEmail, role: userRole } = newUser;
-  res.status(201).json({
-    userData: { id: _id, email: userEmail, userRole },
-    accessToken,
-  });
+  // Rispondi con userData e accessToken
+  res.status(201).json({ userData, accessToken });
 });
 
 // @desc Update a user
@@ -68,45 +99,35 @@ const createUser = asyncHandler(async (req, res) => {
 // @access Admin or User self
 const updateUser = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  if (!id) {
-    throw new ApiError(400, "User ID is missing.");
-  }
-
-  const requesterEmail = req.userEmail;
-  const requesterRole = req.userRole;
-  if (!requesterEmail || !requesterRole) {
-    throw new ApiError(401, "Unauthorized");
-  }
-
   const targetUser = await User.findById(id).exec();
-  if (!targetUser) {
-    throw new ApiError(404, "User not found.");
-  }
+  if (!targetUser) throw new ApiError(404, "User not found.");
 
-  // Permissions: general on own, admin on any
-  if (
-    requesterRole !== "admin" &&
-    targetUser.email.toLowerCase() !== requesterEmail.toLowerCase()
-  ) {
+  // estrai anche meEmail
+  const meEmail = req.userEmail.toLowerCase();
+  const meRole = req.userRole;
+  const isSelf = targetUser.email.toLowerCase() === meEmail;
+  if (meRole !== "admin" && !isSelf) {
     throw new ApiError(403, "Forbidden");
   }
 
+  // blocco anche qui, per sicurezza
+  if (req.body.role !== undefined) {
+    throw new ApiError(400, "Role cannot be changed once set.");
+  }
+
   const updateData = {};
-  if (req.body.email) {
-    updateData.email = req.body.email.trim().toLowerCase();
-  }
-  if (req.body.password) {
-    const salt = await bcrypt.genSalt(10);
-    updateData.passwordHash = await bcrypt.hash(req.body.password, salt);
-  }
-  // Only admin can toggle isActive for general users
-  if (
-    requesterRole === "admin" &&
-    typeof req.body.isActive !== "undefined" &&
-    targetUser.role === "general"
-  ) {
+  if (req.body.email) updateData.email = req.body.email.trim().toLowerCase();
+  if (req.body.password /* hash e assegna a updateData.passwordHash */);
+  if (meRole === "admin" && typeof req.body.isActive !== "undefined") {
     updateData.isActive = req.body.isActive;
   }
+  if (req.body.firstName !== undefined)
+    updateData.firstName = req.body.firstName.trim();
+  if (req.body.lastName !== undefined)
+    updateData.lastName = req.body.lastName.trim();
+  if (req.body.bio !== undefined) updateData.bio = req.body.bio.trim();
+  if (req.body.profileImage !== undefined)
+    updateData.profileImage = req.body.profileImage.trim();
 
   const updated = await User.findByIdAndUpdate(id, updateData, {
     new: true,
@@ -156,6 +177,7 @@ const deleteUser = asyncHandler(async (req, res) => {
 
 module.exports = {
   getAllUsers,
+  getUser,
   createUser,
   updateUser,
   deleteUser,
