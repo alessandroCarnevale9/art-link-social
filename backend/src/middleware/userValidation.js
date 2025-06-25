@@ -11,12 +11,8 @@ const {
 } = require("../utils/validators");
 
 function validateUserLogIn(req, res, next) {
-  const { email, password } =
-    req.body;
-  const errors = [
-    validateEmail(email),
-    validatePassword(password),
-  ];
+  const { email, password } = req.body;
+  const errors = [validateEmail(email), validatePassword(password)];
 
   const filtered = errors.filter(Boolean);
   if (filtered.length) throw new ApiError(400, filtered);
@@ -35,6 +31,13 @@ function validateUser(req, res, next) {
     validateBio(bio),
     validateProfileImage(profileImage),
   ];
+
+  if (role === "admin") {
+    errors.pop();
+    errors.pop();
+    errors.pop();
+    errors.pop();
+  }
 
   const filtered = errors.filter(Boolean);
   if (filtered.length) throw new ApiError(400, filtered);

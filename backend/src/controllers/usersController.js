@@ -1,4 +1,4 @@
-const User = require("../models/UserModel");
+const { User, GeneralUser, AdminUser } = require("../models/UserModel");
 const bcrypt = require("bcrypt");
 const asyncHandler = require("express-async-handler");
 const {
@@ -47,22 +47,14 @@ const getUser = asyncHandler(async (req, res) => {
   res.json(userData);
 });
 
-// @desc Create a new user
-// @route POST /users
-// @access Admin or Public (e.g. registration)
 const createUser = asyncHandler(async (req, res) => {
-  const {
-    email,
-    password,
-    role,
-    firstName,
-    lastName,
-    bio = "",
-    profileImage,
-  } = req.body;
+  const { firstName, lastName, email, password, role } =
+    req.body;
 
   // Controllo unicità email
-  const existing = await User.findOne({ email }).exec();
+  const existing = await User.findOne({
+    email: email.trim().toLowerCase(),
+  }).exec();
   if (existing) {
     throw new ApiError(409, `User with email ${email} already exists.`);
   }
@@ -71,22 +63,29 @@ const createUser = asyncHandler(async (req, res) => {
   const salt = await bcrypt.genSalt(10);
   const passwordHash = await bcrypt.hash(password, salt);
 
-  // Creazione utente nel DB
-  const newUser = await User.create({
-    email: email.trim().toLowerCase(),
-    passwordHash,
-    role,
-    firstName,
-    lastName,
-    bio,
-    profileImage,
-  });
+  let newUser;
+  // Creazione utente nel DB con discriminatori
+  if (role === "admin") {
+    newUser = await AdminUser.create({
+      email: email.trim().toLowerCase(),
+      passwordHash,
+      role,
+    });
+  } else {
+    newUser = await GeneralUser.create({
+      email: email.trim().toLowerCase(),
+      passwordHash,
+      role,
+      firstName: firstName?.trim(),
+      lastName: lastName?.trim(),
+    });
+  }
 
   // Genera payload e userData in base al ruolo
   const { payload, userData } = buildUserInfo(newUser);
 
   // Generazione token
-  const accessToken  = generateAccessToken(payload);
+  const accessToken = generateAccessToken(payload);
   const refreshToken = generateRefreshToken(payload.UserInfo);
   attachRefreshTokenCookie(res, refreshToken);
 
@@ -102,7 +101,6 @@ const updateUser = asyncHandler(async (req, res) => {
   const targetUser = await User.findById(id).exec();
   if (!targetUser) throw new ApiError(404, "User not found.");
 
-  // estrai anche meEmail
   const meEmail = req.userEmail.toLowerCase();
   const meRole = req.userRole;
   const isSelf = targetUser.email.toLowerCase() === meEmail;
@@ -110,24 +108,39 @@ const updateUser = asyncHandler(async (req, res) => {
     throw new ApiError(403, "Forbidden");
   }
 
-  // blocco anche qui, per sicurezza
   if (req.body.role !== undefined) {
     throw new ApiError(400, "Role cannot be changed once set.");
   }
 
+  const isTargetGeneral = targetUser.role === "general";
   const updateData = {};
-  if (req.body.email) updateData.email = req.body.email.trim().toLowerCase();
-  if (req.body.password /* hash e assegna a updateData.passwordHash */);
+
+  if (req.body.email) {
+    updateData.email = req.body.email.trim().toLowerCase();
+  }
+  if (req.body.password) {
+    const salt = await bcrypt.genSalt(10);
+    updateData.passwordHash = await bcrypt.hash(req.body.password, salt);
+  }
   if (meRole === "admin" && typeof req.body.isActive !== "undefined") {
     updateData.isActive = req.body.isActive;
   }
-  if (req.body.firstName !== undefined)
-    updateData.firstName = req.body.firstName.trim();
-  if (req.body.lastName !== undefined)
-    updateData.lastName = req.body.lastName.trim();
-  if (req.body.bio !== undefined) updateData.bio = req.body.bio.trim();
-  if (req.body.profileImage !== undefined)
-    updateData.profileImage = req.body.profileImage.trim();
+
+  // campi extra solo se utente general
+  if (isTargetGeneral) {
+    if (req.body.firstName !== undefined) {
+      updateData.firstName = req.body.firstName.trim();
+    }
+    if (req.body.lastName !== undefined) {
+      updateData.lastName = req.body.lastName.trim();
+    }
+    if (req.body.bio !== undefined) {
+      updateData.bio = req.body.bio.trim();
+    }
+    if (req.body.profileImage !== undefined) {
+      updateData.profileImage = req.body.profileImage.trim();
+    }
+  }
 
   const updated = await User.findByIdAndUpdate(id, updateData, {
     new: true,

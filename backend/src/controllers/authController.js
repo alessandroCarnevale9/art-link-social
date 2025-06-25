@@ -1,4 +1,4 @@
-const User = require("../models/UserModel");
+const { User } = require("../models/UserModel");
 const bcrypt = require("bcrypt");
 const asyncHandler = require("express-async-handler");
 const {

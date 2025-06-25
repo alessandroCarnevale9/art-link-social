@@ -28,8 +28,19 @@ function validatePassword(password) {
 
 // Validazione ruolo
 function validateRole(role) {
-  if (role && !ALLOWED_ROLES.includes(role))
+  if (role === undefined || role === null) {
+    return; // default `general`
+  }
+
+  if (typeof role !== "string") {
     return `Role must be one of: ${ALLOWED_ROLES.join(", ")}.`;
+  }
+
+  const normalized = role.trim().toLowerCase();
+
+  if (normalized.length === 0 || !ALLOWED_ROLES.includes(role)) {
+    return `Role must be one of: ${ALLOWED_ROLES.join(", ")}.`;
+  }
 }
 
 // Funzione generica per nomi

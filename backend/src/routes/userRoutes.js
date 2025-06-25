@@ -10,7 +10,7 @@ const {
 // Registrazione aperta a tutti
 router.post("/register", validateUser, usersCtrl.createUser);
 
-// Profilo “self”: usa l’ID dal payload del JWT
+// Visualizza profilo personale: usa l’ID dal payload del JWT
 router.get(
   "/me",
   verifyJWT,
@@ -22,7 +22,7 @@ router.get(
   usersCtrl.getUser
 );
 
-// Profilo “self”: usa l’ID dal payload del JWT
+// Modifica profilo personale: usa l’ID dal payload del JWT
 router.patch(
   "/me",
   verifyJWT,
@@ -35,7 +35,7 @@ router.patch(
   usersCtrl.updateUser
 );
 
-// Lista completa (solo admin)
+// Visualizza lista completa di tutti gli utenti (solo admin)
 router.get("/", verifyJWT, usersCtrl.getAllUsers);
 
 // CRUD su user singolo
