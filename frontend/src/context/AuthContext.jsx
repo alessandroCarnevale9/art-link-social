@@ -13,10 +13,37 @@ export const authReducer = (state, action) => {
   }
 };
 
+// Helper to decode JWT payload
+const parseJwt = (token) => {
+  try {
+    const [, payload] = token.split('.');
+    return JSON.parse(atob(payload));
+  } catch {
+    return {};
+  }
+};
+
+// Helper to validate JWT expiration
+const isTokenValid = (token) => {
+  if (!token) return false;
+  const { exp } = parseJwt(token);
+  // exp is in seconds, Date.now() in ms
+  return typeof exp === 'number' && Date.now() < exp * 1000;
+};
+
 export const AuthContextProvider = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, { user: null });
 
   useEffect(() => {
+    let refreshTimeout;
+
+    const scheduleRefresh = (exp) => {
+      const delay = exp * 1000 - Date.now() - 5000; // 5s before expiration
+      if (delay > 0) {
+        refreshTimeout = setTimeout(tryRefresh, delay);
+      }
+    };
+
     const tryRefresh = async () => {
       try {
         const res = await fetch("/api/auth/refresh", {
@@ -24,34 +51,48 @@ export const AuthContextProvider = ({ children }) => {
           credentials: "include",
         });
         if (!res.ok) {
-          return dispatch({ type: "LOGOUT" });
+          handleLogout();
+          return;
         }
         const json = await res.json();
+        localStorage.setItem("jwt", JSON.stringify(json));
         dispatch({ type: "LOGIN", payload: json });
+        const { exp } = parseJwt(json.accessToken);
+        scheduleRefresh(exp);
       } catch (err) {
         console.error("Refresh fallito:", err);
-        dispatch({ type: "LOGOUT" });
+        handleLogout();
       }
     };
 
-    // Provo a leggere da localStorage
+    const handleLogout = () => {
+      localStorage.removeItem("jwt");
+      dispatch({ type: "LOGOUT" });
+    };
+
+    // 1) Leggo da localStorage e verifico che il token non sia scaduto
     const raw = localStorage.getItem("jwt");
     if (raw) {
       try {
         const parsed = JSON.parse(raw);
-        // parsed deve essere { userData: {...}, accessToken: "..." }
-        if (parsed?.userData && parsed?.accessToken) {
+        const token = parsed?.accessToken;
+        if (isTokenValid(token)) {
           dispatch({ type: "LOGIN", payload: parsed });
-          return; // non fare il refresh
+          const { exp } = parseJwt(token);
+          scheduleRefresh(exp);
+          return;
         }
       } catch {
-        // se il JSON è malformato, rimuovo e proseguo al refresh
-        localStorage.removeItem("jwt");
+        // JSON malformato
       }
+      // Rimuovo token scaduto o malformato
+      localStorage.removeItem("jwt");
     }
 
-    // 2) Se non ho un JWT valido in localStorage, provo il refresh via cookie
+    // 2) Fallback: refresh via cookie
     tryRefresh();
+
+    return () => clearTimeout(refreshTimeout);
   }, [dispatch]);
 
   console.log("AuthContext state:", state);

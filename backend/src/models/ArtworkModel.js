@@ -35,6 +35,12 @@ const artworkSchema = new Schema(
         ref: "Category",
       },
     ],
+    description: {
+      type: String,
+      trim: true,
+      maxlength: 500,
+      default: "",
+    },
   },
   {
     timestamps: true,
