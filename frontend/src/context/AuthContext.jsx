@@ -16,7 +16,7 @@ export const authReducer = (state, action) => {
 // Helper to decode JWT payload
 const parseJwt = (token) => {
   try {
-    const [, payload] = token.split('.');
+    const [, payload] = token.split(".");
     return JSON.parse(atob(payload));
   } catch {
     return {};
@@ -28,7 +28,7 @@ const isTokenValid = (token) => {
   if (!token) return false;
   const { exp } = parseJwt(token);
   // exp is in seconds, Date.now() in ms
-  return typeof exp === 'number' && Date.now() < exp * 1000;
+  return typeof exp === "number" && Date.now() < exp * 1000;
 };
 
 export const AuthContextProvider = ({ children }) => {
@@ -37,12 +37,12 @@ export const AuthContextProvider = ({ children }) => {
   useEffect(() => {
     let refreshTimeout;
 
-    const scheduleRefresh = (exp) => {
-      const delay = exp * 1000 - Date.now() - 5000; // 5s before expiration
-      if (delay > 0) {
-        refreshTimeout = setTimeout(tryRefresh, delay);
-      }
-    };
+    // const scheduleRefresh = (exp) => {
+    //   const delay = exp * 1000 - Date.now() - 5000; // 5s before expiration
+    //   if (delay > 0) {
+    //     refreshTimeout = setTimeout(tryRefresh, delay);
+    //   }
+    // };
 
     const tryRefresh = async () => {
       try {
@@ -58,7 +58,7 @@ export const AuthContextProvider = ({ children }) => {
         localStorage.setItem("jwt", JSON.stringify(json));
         dispatch({ type: "LOGIN", payload: json });
         const { exp } = parseJwt(json.accessToken);
-        scheduleRefresh(exp);
+        // scheduleRefresh(exp);
       } catch (err) {
         console.error("Refresh fallito:", err);
         handleLogout();
@@ -79,7 +79,7 @@ export const AuthContextProvider = ({ children }) => {
         if (isTokenValid(token)) {
           dispatch({ type: "LOGIN", payload: parsed });
           const { exp } = parseJwt(token);
-          scheduleRefresh(exp);
+          // scheduleRefresh(exp);
           return;
         }
       } catch {
@@ -88,7 +88,6 @@ export const AuthContextProvider = ({ children }) => {
       // Rimuovo token scaduto o malformato
       localStorage.removeItem("jwt");
     }
-
     // 2) Fallback: refresh via cookie
     tryRefresh();
 

@@ -10,10 +10,13 @@ function generateAccessToken(payload) {
   });
 }
 
-function generateRefreshToken(payload) {
-  return jwt.sign(payload, process.env.REFRESH_TOKEN_SECRET, {
-    expiresIn: REFRESH_EXPIRES_IN,
-  });
+// Ora il refresh token incorpora il payload sotto la chiave UserInfo
+function generateRefreshToken(userInfo) {
+  return jwt.sign(
+    { UserInfo: userInfo },
+    process.env.REFRESH_TOKEN_SECRET,
+    { expiresIn: REFRESH_EXPIRES_IN }
+  );
 }
 
 function verifyRefreshToken(token) {
