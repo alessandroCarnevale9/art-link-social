@@ -8,6 +8,8 @@ const {
 } = require("../services/tokenService");
 const ApiError = require("../utils/ApiError");
 const { buildUserInfo } = require("../utils/userHelpers");
+const getDataUri = require("../utils/datauri");
+const { uploadToCloudinary } = require("../utils/cloudinary");
 
 // @desc Get all users (admin only)
 // @route GET /users
@@ -27,6 +29,8 @@ const getAllUsers = asyncHandler(async (req, res) => {
 // @route GET /users/:id
 // @access Admin or general (self or other general)
 const getUser = asyncHandler(async (req, res) => {
+  // *** valutare se utilizzare il metodo populate() di mongoose ***
+
   const targetUser = await User.findById(req.params.id)
     .select("-passwordHash")
     .lean();
@@ -48,8 +52,7 @@ const getUser = asyncHandler(async (req, res) => {
 });
 
 const createUser = asyncHandler(async (req, res) => {
-  const { firstName, lastName, email, password, role } =
-    req.body;
+  const { firstName, lastName, email, password, role } = req.body;
 
   // Controllo unicità email
   const existing = await User.findOne({
@@ -137,8 +140,14 @@ const updateUser = asyncHandler(async (req, res) => {
     if (req.body.bio !== undefined) {
       updateData.bio = req.body.bio.trim();
     }
-    if (req.body.profileImage !== undefined) {
-      updateData.profileImage = req.body.profileImage.trim();
+    // if (req.body.profileImage !== undefined) {
+    //   updateData.profileImage = req.body.profileImage.trim();
+    // }
+
+    if (req.file) {
+      const fileUri = getDataUri(req.file);
+      const cloudResponse = await uploadToCloudinary(fileUri);
+      updateData.profileImage = cloudResponse.secure_url;
     }
   }
 
@@ -187,6 +196,8 @@ const deleteUser = asyncHandler(async (req, res) => {
   await targetUser.deleteOne();
   res.json({ message: "User successfully deleted." });
 });
+
+// ...
 
 module.exports = {
   getAllUsers,

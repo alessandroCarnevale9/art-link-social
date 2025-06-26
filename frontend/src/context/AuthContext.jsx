@@ -15,12 +15,10 @@ export const authReducer = (state, action) => {
 
 // Helper to decode JWT payload
 const parseJwt = (token) => {
-
   // Un JWT token è fatto da tre parti: HEADER.PAYLOAD.SIGNATURE
 
   try {
     const [, payload] = token.split(".");
-    console.log(`--->\t${atob(payload)}`)
     return JSON.parse(atob(payload));
   } catch {
     return {};
@@ -39,15 +37,6 @@ export const AuthContextProvider = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, { user: null });
 
   useEffect(() => {
-    // let refreshTimeout;
-
-    // const scheduleRefresh = (exp) => {
-    //   const delay = exp * 1000 - Date.now() - 5000; // 5s before expiration
-    //   if (delay > 0) {
-    //     refreshTimeout = setTimeout(tryRefresh, delay);
-    //   }
-    // };
-
     const tryRefresh = async () => {
       try {
         const res = await fetch("/api/auth/refresh", {
@@ -61,8 +50,6 @@ export const AuthContextProvider = ({ children }) => {
         const json = await res.json(); // user data + new access token
         localStorage.setItem("jwt", JSON.stringify(json));
         dispatch({ type: "LOGIN", payload: json });
-        // const { exp } = parseJwt(json.accessToken);
-        // scheduleRefresh(exp);
       } catch (err) {
         console.error("Refresh error:", err);
         handleLogout();
@@ -82,8 +69,6 @@ export const AuthContextProvider = ({ children }) => {
         const token = parsed?.accessToken;
         if (isTokenValid(token)) {
           dispatch({ type: "LOGIN", payload: parsed });
-          // const { exp } = parseJwt(token);
-          // scheduleRefresh(exp);
           return;
         }
       } catch {
@@ -94,8 +79,6 @@ export const AuthContextProvider = ({ children }) => {
     }
     // 2) Fallback: refresh via cookie
     tryRefresh();
-
-    // return () => clearTimeout(refreshTimeout);
   }, [dispatch]);
 
   console.log("AuthContext state:", state);

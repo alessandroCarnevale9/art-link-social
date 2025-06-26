@@ -61,7 +61,6 @@ const GeneralSchema = new Schema({
   profileImage: {
     type: String,
     trim: true,
-    default: "https://tuo-dominio.com/images/default-profile.png",
   },
   artworks: [{ type: Schema.Types.ObjectId, ref: "Artwork" }],
   comments: [{ type: Schema.Types.ObjectId, ref: "Comment" }],

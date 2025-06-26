@@ -7,6 +7,8 @@ const {
   validateUserUpdate,
 } = require("../middleware/userValidation");
 
+const upload = require("../middleware/multer");
+
 // Registrazione aperta a tutti
 router.post("/register", validateUser, usersCtrl.createUser);
 
@@ -27,6 +29,7 @@ router.patch(
   "/me",
   verifyJWT,
   validateUserUpdate,
+  upload.single("profilePicture"),
   // middleware che mappa l’id dell’utente loggato in req.params.id
   (req, res, next) => {
     req.params.id = req.userId;
@@ -42,7 +45,11 @@ router.get("/", verifyJWT, usersCtrl.getAllUsers);
 router
   .route("/:id")
   .get(verifyJWT, usersCtrl.getUser)
-  .patch(verifyJWT, validateUserUpdate, usersCtrl.updateUser)
+  .patch(verifyJWT, validateUserUpdate, upload.single("profilePicture"), usersCtrl.updateUser)
   .delete(verifyJWT, usersCtrl.deleteUser);
 
 module.exports = router;
+
+
+// Quando toccherà gestire queste situazioni lato frontend guardare
+// MERN Authentication Tutorial #15 ~ Net Ninja
