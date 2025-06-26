@@ -1,6 +1,5 @@
 const jwt = require("jsonwebtoken");
 
-// leggi dal .env o imposta default
 const ACCESS_EXPIRES_IN = process.env.ACCESS_TOKEN_EXPIRES_IN || "15m";
 const REFRESH_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRES_IN || "7d";
 
@@ -10,13 +9,10 @@ function generateAccessToken(payload) {
   });
 }
 
-// Ora il refresh token incorpora il payload sotto la chiave UserInfo
-function generateRefreshToken(userInfo) {
-  return jwt.sign(
-    { UserInfo: userInfo },
-    process.env.REFRESH_TOKEN_SECRET,
-    { expiresIn: REFRESH_EXPIRES_IN }
-  );
+function generateRefreshToken(payload) {
+  return jwt.sign(payload, process.env.REFRESH_TOKEN_SECRET, {
+    expiresIn: REFRESH_EXPIRES_IN,
+  });
 }
 
 function verifyRefreshToken(token) {
@@ -27,7 +23,7 @@ function verifyRefreshToken(token) {
 function attachRefreshTokenCookie(res, token) {
   res.cookie("jwt", token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: true,
     sameSite: "None",
     maxAge: 1000 * 60 * 60 * 24 * 7, // corrisponde a 7d --> REFRESH_TOKEN_EXPIRES_IN
   });
@@ -37,7 +33,7 @@ function attachRefreshTokenCookie(res, token) {
 function clearRefreshTokenCookie(res) {
   res.clearCookie("jwt", {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: true,
     sameSite: "None",
   });
 }

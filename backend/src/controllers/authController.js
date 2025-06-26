@@ -25,7 +25,7 @@ const login = asyncHandler(async (req, res) => {
 
   // Generazione token
   const accessToken  = generateAccessToken(payload);
-  const refreshToken = generateRefreshToken(payload.UserInfo);
+  const refreshToken = generateRefreshToken(payload);
   attachRefreshTokenCookie(res, refreshToken);
 
   res.status(201).json({ userData, accessToken });
