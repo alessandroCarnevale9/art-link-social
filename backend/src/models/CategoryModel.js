@@ -10,16 +10,21 @@ const categorySchema = new Schema(
       trim: true,
     },
     description: String,
-    artworks: [
-      {
-        type: Schema.Types.ObjectId,
-        ref: "Artwork",
-      },
-    ],
   },
   {
     timestamps: true,
   }
 );
+
+// virtual populate per Artwork
+categorySchema.virtual("artworks", {
+  ref: "Artwork",
+  localField: "_id",
+  foreignField: "categories",
+  justOne: false,
+});
+
+categorySchema.set("toObject", { virtuals: true });
+categorySchema.set("toJSON", { virtuals: true });
 
 module.exports = mongoose.model("Category", categorySchema);

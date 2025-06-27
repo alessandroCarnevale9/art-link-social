@@ -1,5 +1,6 @@
+// src/models/CommentModel.js
 const mongoose = require("mongoose");
-const Schema = mongoose.Schema;
+const { Schema } = mongoose;
 
 const commentSchema = new Schema(
   {
@@ -22,5 +23,9 @@ const commentSchema = new Schema(
     timestamps: true,
   }
 );
+
+// Indexes per migliorare le performance delle query
+commentSchema.index({ artworkId: 1 });
+commentSchema.index({ authorId: 1 });
 
 module.exports = mongoose.model("Comment", commentSchema);

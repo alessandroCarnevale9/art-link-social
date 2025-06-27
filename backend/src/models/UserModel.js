@@ -1,12 +1,13 @@
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
 
-// 1) schema base con i soli campi comuni
+// 1) Schema base con i soli campi comuni
 const baseOptions = {
-  discriminatorKey: "role", // il campo che distingue i tipi
+  discriminatorKey: "role",
   collection: "users",
   timestamps: true,
 };
+
 const BaseUserSchema = new Schema(
   {
     email: {
@@ -36,46 +37,64 @@ const BaseUserSchema = new Schema(
 
 const User = mongoose.model("User", BaseUserSchema);
 
-// 2) schema “figlio” per gli utenti di tipo general
-const GeneralSchema = new Schema({
-  firstName: {
-    type: String,
-    trim: true,
-    required: true,
-    minlength: 2,
-    maxlength: 30,
+// 2) Schema “figlio” per gli utenti di tipo general
+const GeneralSchema = new Schema(
+  {
+    firstName: {
+      type: String,
+      trim: true,
+      required: true,
+      minlength: 2,
+      maxlength: 30,
+    },
+    lastName: {
+      type: String,
+      trim: true,
+      required: true,
+      minlength: 2,
+      maxlength: 30,
+    },
+    bio: {
+      type: String,
+      trim: true,
+      maxlength: 160,
+      default: "",
+    },
+    profileImage: {
+      type: String,
+      trim: true,
+    },
   },
-  lastName: {
-    type: String,
-    trim: true,
-    required: true,
-    minlength: 2,
-    maxlength: 30,
-  },
-  bio: {
-    type: String,
-    trim: true,
-    maxlength: 160,
-    default: "",
-  },
-  profileImage: {
-    type: String,
-    trim: true,
-  },
-  artworks: [{ type: Schema.Types.ObjectId, ref: "Artwork" }],
-  comments: [{ type: Schema.Types.ObjectId, ref: "Comment" }],
-  likedArtworks: [{ type: Schema.Types.ObjectId, ref: "Artwork" }],
-  followers: [{ type: Schema.Types.ObjectId, ref: "User" }],
-  following: [{ type: Schema.Types.ObjectId, ref: "User" }],
-  notifications: [{ type: Schema.Types.ObjectId, ref: "Notification" }],
-  reports: [{ type: Schema.Types.ObjectId, ref: "Report" }],
+  { timestamps: true }
+);
+
+// Virtual populate per relazioni follow
+GeneralSchema.virtual("followers", {
+  ref: "Follow", // Model Follow
+  localField: "_id",
+  foreignField: "followeeId",
+  justOne: false,
+});
+GeneralSchema.virtual("following", {
+  ref: "Follow", // Model Follow
+  localField: "_id",
+  foreignField: "followerId",
+  justOne: false,
 });
 
-// 3) schema “figlio” per gli admin (non aggiunge nulla)
-const AdminSchema = new Schema({});
+// Abilita virtuals in JSON e toObject
+GeneralSchema.set("toObject", { virtuals: true });
+GeneralSchema.set("toJSON", { virtuals: true });
 
-// 4) crei i due modelli discriminati
+// 3) Schema “figlio” per gli admin (no campi aggiuntivi)
+const AdminSchema = new Schema({}, baseOptions);
+
+// 4) Creazione dei model discriminati
 const GeneralUser = User.discriminator("general", GeneralSchema);
 const AdminUser = User.discriminator("admin", AdminSchema);
 
-module.exports = { User, GeneralUser, AdminUser };
+module.exports = {
+  User,
+  GeneralUser,
+  AdminUser,
+};

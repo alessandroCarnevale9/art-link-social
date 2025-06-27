@@ -1,5 +1,6 @@
+// src/models/NotificationModel.js
 const mongoose = require("mongoose");
-const Schema = mongoose.Schema;
+const { Schema } = mongoose;
 
 const notificationSchema = new Schema(
   {
@@ -13,7 +14,14 @@ const notificationSchema = new Schema(
       enum: ["NewComment", "NewLike", "NewFollower", "ReportResolved"],
       required: true,
     },
-    message: String,
+    message: {
+      type: String,
+      trim: true,
+    },
+    fromUserId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+    },
     isRead: {
       type: Boolean,
       default: false,
@@ -23,5 +31,7 @@ const notificationSchema = new Schema(
     timestamps: true,
   }
 );
+
+notificationSchema.index({ userId: 1, isRead: 1 });
 
 module.exports = mongoose.model("Notification", notificationSchema);

@@ -1,10 +1,11 @@
+// src/services/notificationService.js
 const Notification = require("../models/NotificationModel");
 
 async function notifyNewFollower(followerId, followeeId) {
   return Notification.create({
     userId: followeeId,
     type: "NewFollower",
-    message: "Hai un nuovo follower!",
+    message: "You have a new follower!",
     fromUserId: followerId,
   });
 }

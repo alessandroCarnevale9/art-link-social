@@ -1,76 +1,64 @@
+// src/controllers/followController.js
 const asyncHandler = require("express-async-handler");
 const ApiError = require("../utils/ApiError");
-const User = require("../models/UserModel").GeneralUser;
+const Follow = require("../models/FollowModel");
 const notificationService = require("../services/notificationService");
 
 // POST /users/:id/follow
 const followUser = asyncHandler(async (req, res) => {
-  const meId = req.userId;
-  const targetId = req.params.id;
-  if (meId === targetId) throw new ApiError(400, "You cannot follow yourself.");
-
-  // Provo ad aggiungere solo se non c’è già
-  const me = await User.findOneAndUpdate(
-    { _id: meId, following: { $ne: targetId } }, // condizione: non seguo già
-    { $addToSet: { following: targetId } },
-    { new: true }
-  );
-  if (!me) {
-    // o non esiste meId, o già seguivo targetId
-    throw new ApiError(409, "You are already following this user.");
+  const followerId = req.userId;
+  const followeeId = req.params.id;
+  if (followerId === followeeId) {
+    throw new ApiError(400, "You cannot follow yourself.");
   }
 
-  // Aggiorno anche il contesto opposto
-  const target = await User.findByIdAndUpdate(targetId, {
-    $addToSet: { followers: meId },
-  });
-  if (!target) throw new ApiError(404, "User not found.");
+  // Creazione del follow (indice unico previene duplicati)
+  try {
+    await Follow.create({ followerId, followeeId });
+  } catch (err) {
+    if (err.code === 11000) {
+      throw new ApiError(409, "You are already following this user.");
+    }
+    throw err;
+  }
 
   // Notifica di nuovo follower
-  await notificationService.notifyNewFollower(meId, targetId);
+  await notificationService.notifyNewFollower(followerId, followeeId);
 
   res.status(201).json({ message: "You are now following this user." });
 });
 
 // DELETE /users/:id/follow
 const unfollowUser = asyncHandler(async (req, res) => {
-  const meId = req.userId;
-  const targetId = req.params.id;
+  const followerId = req.userId;
+  const followeeId = req.params.id;
 
-  const [me, target] = await Promise.all([
-    User.findByIdAndUpdate(
-      meId,
-      { $pull: { following: targetId } },
-      { new: true }
-    ),
-    User.findByIdAndUpdate(
-      targetId,
-      { $pull: { followers: meId } },
-      { new: true }
-    ),
-  ]);
-  if (!me || !target)
-    throw new ApiError(404, "User not found or you were not following.");
+  const result = await Follow.findOneAndDelete({ followerId, followeeId });
+  if (!result) {
+    throw new ApiError(404, "You were not following this user.");
+  }
 
   res.json({ message: "You have unfollowed the user." });
 });
 
 // GET /users/:id/followers
 const getFollowers = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.params.id)
-    .populate("followers", "firstName lastName profileImage")
+  const followDocs = await Follow.find({ followeeId: req.params.id })
+    .populate("followerId", "firstName lastName profileImage")
     .lean();
-  if (!user) throw new ApiError(404, "User not found.");
-  res.json(user.followers);
+
+  const users = followDocs.map((doc) => doc.followerId);
+  res.json(users);
 });
 
 // GET /users/:id/following
 const getFollowing = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.params.id)
-    .populate("following", "firstName lastName profileImage")
+  const followDocs = await Follow.find({ followerId: req.params.id })
+    .populate("followeeId", "firstName lastName profileImage")
     .lean();
-  if (!user) throw new ApiError(404, "User not found.");
-  res.json(user.following);
+
+  const users = followDocs.map((doc) => doc.followeeId);
+  res.json(users);
 });
 
 module.exports = {
