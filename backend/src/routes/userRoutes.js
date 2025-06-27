@@ -8,21 +8,13 @@ const {
 } = require("../middleware/userValidation");
 
 const upload = require("../middleware/multer");
+const mapMe = require("../middleware/mapMe");
 
 // Registrazione aperta a tutti
 router.post("/register", validateUser, usersCtrl.createUser);
 
 // Visualizza profilo personale: usa l’ID dal payload del JWT
-router.get(
-  "/me",
-  verifyJWT,
-  // middleware che mappa l’id dell’utente loggato in req.params.id
-  (req, res, next) => {
-    req.params.id = req.userId;
-    next();
-  },
-  usersCtrl.getUser
-);
+router.get("/me", verifyJWT, mapMe, usersCtrl.getUser);
 
 // Modifica profilo personale: usa l’ID dal payload del JWT
 router.patch(
@@ -30,11 +22,7 @@ router.patch(
   verifyJWT,
   validateUserUpdate,
   upload.single("profilePicture"),
-  // middleware che mappa l’id dell’utente loggato in req.params.id
-  (req, res, next) => {
-    req.params.id = req.userId;
-    next();
-  },
+  mapMe,
   usersCtrl.updateUser
 );
 
@@ -45,11 +33,15 @@ router.get("/", verifyJWT, usersCtrl.getAllUsers);
 router
   .route("/:id")
   .get(verifyJWT, usersCtrl.getUser)
-  .patch(verifyJWT, validateUserUpdate, upload.single("profilePicture"), usersCtrl.updateUser)
+  .patch(
+    verifyJWT,
+    validateUserUpdate,
+    upload.single("profilePicture"),
+    usersCtrl.updateUser
+  )
   .delete(verifyJWT, usersCtrl.deleteUser);
 
 module.exports = router;
-
 
 // Quando toccherà gestire queste situazioni lato frontend guardare
 // MERN Authentication Tutorial #15 ~ Net Ninja

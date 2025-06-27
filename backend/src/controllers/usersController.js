@@ -18,19 +18,25 @@ const getAllUsers = asyncHandler(async (req, res) => {
   if (req.userRole !== "admin") {
     throw new ApiError(403, "Forbidden");
   }
-  // prendo tutti gli utenti e tolgo passwordHash
-  const users = await User.find().select("-passwordHash").lean();
-  // costruisco userData per ognuno
-  const list = users.map((u) => buildUserInfo(u).userData);
-  res.json(list);
+
+  const page = Math.max(parseInt(req.query.page) || 1, 1);
+  const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+  const skip = (page - 1) * limit;
+
+  const [total, users] = await Promise.all([
+    User.countDocuments(),
+    User.find().select("-passwordHash").skip(skip).limit(limit).lean(),
+  ]);
+
+  const data = users.map((u) => buildUserInfo(u).userData);
+
+  res.json({ total, page, limit, data });
 });
 
 // @desc Get a user
 // @route GET /users/:id
 // @access Admin or general (self or other general)
 const getUser = asyncHandler(async (req, res) => {
-  // *** valutare se utilizzare il metodo populate() di mongoose ***
-
   const targetUser = await User.findById(req.params.id)
     .select("-passwordHash")
     .lean();
@@ -46,7 +52,6 @@ const getUser = asyncHandler(async (req, res) => {
     }
   }
 
-  // qui uso buildUserInfo per includere o meno i campi general
   const { userData } = buildUserInfo(targetUser);
   res.json(userData);
 });
@@ -196,8 +201,6 @@ const deleteUser = asyncHandler(async (req, res) => {
   await targetUser.deleteOne();
   res.json({ message: "User successfully deleted." });
 });
-
-// ...
 
 module.exports = {
   getAllUsers,

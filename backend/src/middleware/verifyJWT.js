@@ -10,9 +10,16 @@ const verifyJWT = asyncHandler(async (req, res, next) => {
 
   const token = authHeader.split(" ")[1];
   let decoded;
+
+  // console.log(">> AUTH HEADER:", authHeader);
+  // console.log(">> TOKEN TO VERIFY:", token);
+  // console.log(">> SECRET:", process.env.ACCESS_TOKEN_SECRET);
+
   try {
     decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+    // console.log(">> DECODED PAYLOAD:", decoded);
   } catch (err) {
+    // console.error(">> JWT VERIFY ERROR:", err.message);
     throw new ApiError(403, "Invalid token");
   }
 

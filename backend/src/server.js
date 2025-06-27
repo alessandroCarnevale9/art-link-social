@@ -31,6 +31,7 @@ app.use(express.json()); // middleware that parse JSON strings
 
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/users", require("./routes/userRoutes"));
+app.use("/api/users/follow", require("./routes/followRoutes"));
 
 process.on("SIGINT", async () => {
   try {
