@@ -2,7 +2,14 @@ const asyncHandler = require("express-async-handler");
 const ApiError = require("../utils/ApiError");
 const Artwork = require("../models/ArtworkModel");
 const Category = require("../models/CategoryModel");
-require("../models/ArtistModel");
+const mongoose = require("mongoose");
+const { buildPagination } = require("../utils/queryHelpers");
+const {
+  lookupArtist,
+  lookupCategories,
+  addFavoriteCount,
+  addCommentsCount,
+} = require("../utils/aggregationHelpers");
 
 /**
  * GET /api/artworks
@@ -11,9 +18,7 @@ require("../models/ArtistModel");
  * – Sort: date (createdAt desc), popularity (favoritesCount desc)
  */
 const getAllArtworks = asyncHandler(async (req, res) => {
-  const page = Math.max(parseInt(req.query.page) || 1, 1);
-  const limit = Math.min(parseInt(req.query.limit) || 20, 100);
-  const skip = (page - 1) * limit;
+  const { page, limit, skip } = buildPagination(req);
   const {
     title,
     tag,
@@ -23,7 +28,6 @@ const getAllArtworks = asyncHandler(async (req, res) => {
     sortBy = "date",
   } = req.query;
 
-  // 1) Build filtro
   const match = {};
   if (title) match.title = { $regex: title, $options: "i" };
   if (tag) match.tags = tag;
@@ -31,61 +35,26 @@ const getAllArtworks = asyncHandler(async (req, res) => {
   if (artistId) match.artistId = mongoose.Types.ObjectId(artistId);
   if (artworkPeriod) match.artworkPeriod = artworkPeriod;
 
-  // 2) Aggregation pipeline
   const pipeline = [
     { $match: match },
-    // popola artist e categories
-    {
-      $lookup: {
-        from: "artists",
-        localField: "artistId",
-        foreignField: "_id",
-        as: "artist",
-      },
-    },
-    { $unwind: { path: "$artist", preserveNullAndEmptyArrays: true } },
-    {
-      $lookup: {
-        from: "categories",
-        localField: "categories",
-        foreignField: "_id",
-        as: "categories",
-      },
-    },
-    // conta i favorites
-    {
-      $lookup: {
-        from: "favorites",
-        localField: "_id",
-        foreignField: "artwork",
-        as: "favorites",
-      },
-    },
-    {
-      $addFields: {
-        favoritesCount: { $size: "$favorites" },
-      },
-    },
-    // rimuovi l'array favorites, non serve
+    ...lookupArtist(),
+    ...lookupCategories(),
+    ...addFavoriteCount(),
     { $project: { favorites: 0 } },
+    {
+      $sort:
+        sortBy === "popularity"
+          ? { favoritesCount: -1, createdAt: -1 }
+          : { createdAt: -1 },
+    },
+    { $skip: skip },
+    { $limit: limit },
   ];
 
-  // 3) Ordine
-  if (sortBy === "popularity") {
-    pipeline.push({ $sort: { favoritesCount: -1, createdAt: -1 } });
-  } else {
-    pipeline.push({ $sort: { createdAt: -1 } });
-  }
-
-  // 4) Paginazione
-  pipeline.push({ $skip: skip }, { $limit: limit });
-
-  // 5) Esecuzione
-  const [data, totalArr] = await Promise.all([
+  const [data, total] = await Promise.all([
     Artwork.aggregate(pipeline),
     Artwork.countDocuments(match),
   ]);
-  const total = totalArr;
 
   res.json({ total, page, limit, data });
 });
@@ -98,8 +67,10 @@ const getArtworkById = asyncHandler(async (req, res) => {
   const artId = mongoose.Types.ObjectId(req.params.id);
 
   const pipeline = [
+    // 1) Seleziona l'opera
     { $match: { _id: artId } },
-    // author
+
+    // 2) Popola l'autore (inline)
     {
       $lookup: {
         from: "users",
@@ -109,54 +80,18 @@ const getArtworkById = asyncHandler(async (req, res) => {
       },
     },
     { $unwind: "$author" },
-    // artist
-    {
-      $lookup: {
-        from: "artists",
-        localField: "artistId",
-        foreignField: "_id",
-        as: "artist",
-      },
-    },
-    { $unwind: { path: "$artist", preserveNullAndEmptyArrays: true } },
-    // categories
-    {
-      $lookup: {
-        from: "categories",
-        localField: "categories",
-        foreignField: "_id",
-        as: "categories",
-      },
-    },
-    // comments count
-    {
-      $lookup: {
-        from: "comments",
-        localField: "_id",
-        foreignField: "artworkId",
-        as: "comments",
-      },
-    },
-    {
-      $addFields: {
-        commentsCount: { $size: "$comments" },
-      },
-    },
-    // favorites count
-    {
-      $lookup: {
-        from: "favorites",
-        localField: "_id",
-        foreignField: "artwork",
-        as: "favorites",
-      },
-    },
-    {
-      $addFields: {
-        favoritesCount: { $size: "$favorites" },
-      },
-    },
-    // proiettare via i campi temporanei
+
+    // 3) Popola l'artista e le categorie (helper)
+    ...lookupArtist(),
+    ...lookupCategories(),
+
+    // 4) Aggiungi contatore commenti e rimuovi l'array
+    ...addCommentsCount(),
+
+    // 5) Aggiungi contatore favorites e rimuovi l'array
+    ...addFavoriteCount(),
+
+    // 6) Proietta i campi temporanei e nascondi hash, role, isActive, __v di author
     {
       $project: {
         comments: 0,
@@ -170,7 +105,10 @@ const getArtworkById = asyncHandler(async (req, res) => {
   ];
 
   const [result] = await Artwork.aggregate(pipeline);
-  if (!result) throw new ApiError(404, "Artwork not found.");
+  if (!result) {
+    throw new ApiError(404, "Artwork not found.");
+  }
+
   res.json(result);
 });
 

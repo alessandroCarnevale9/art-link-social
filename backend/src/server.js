@@ -35,6 +35,7 @@ app.use("/api/categories", require("./routes/categoryRoutes"));
 app.use("/api/artworks", require("./routes/artworkRoutes"));
 app.use("/api/artworks/:id/comments", require("./routes/commentRoutes"));
 app.use("/api/notifications", require("./routes/notificationRoutes"));
+app.use("/api/search", require("./routes/searchRoutes"));
 
 process.on("SIGINT", async () => {
   try {
