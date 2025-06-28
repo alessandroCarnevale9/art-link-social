@@ -1,40 +1,42 @@
-function buildUserInfo(user) {
-  const base = {
-    id: user._id,
-    email: user.email,
-    role: user.role,
+// src/utils/userHelpers.js
+const Follow = require("../models/FollowModel");
+const Favorite = require("../models/FavoriteModel");
+const Comment = require("../models/CommentModel");
+
+async function buildUserInfo(user) {
+  const id = user._id.toString();
+  const email = user.email;
+  const role = user.role;
+
+  // conta followers, following, favorites, comments
+  const [followersCount, followingCount, favoritesCount, commentsCount] =
+    await Promise.all([
+      Follow.countDocuments({ followeeId: id }),
+      Follow.countDocuments({ followerId: id }),
+      Favorite.countDocuments({ user: id }),
+      Comment.countDocuments({ authorId: id }),
+    ]);
+
+  // il payload per i token
+  const payload = { id, email, role };
+
+  // i dati che invierai al client
+  const userData = {
+    id,
+    email,
+    role,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    bio: user.bio,
+    profileImage: user.profileImage,
+    isActive: user.isActive,
+    followersCount,
+    followingCount,
+    favoritesCount,
+    commentsCount,
   };
 
-  // campi “general” + contatori
-  if (user.role === "general") {
-    base.firstName = user.firstName;
-    base.lastName = user.lastName;
-    base.bio = user.bio;
-    base.profileImage = user.profileImage;
-    base.followersCount = Array.isArray(user.followers)
-      ? user.followers.length
-      : 0;
-    base.followingCount = Array.isArray(user.following)
-      ? user.following.length
-      : 0;
-    base.favoritesCount = Array.isArray(user.likedArtworks)
-      ? user.likedArtworks.length
-      : 0;
-    base.commentsCount = Array.isArray(user.comments)
-      ? user.comments.length
-      : 0;
-  }
-
-  return {
-    payload: {
-      UserInfo: {
-        id: user._id.toString(),
-        email: user.email,
-        role: user.role,
-      },
-    },
-    userData: base,
-  };
+  return { payload, userData };
 }
 
 module.exports = { buildUserInfo };

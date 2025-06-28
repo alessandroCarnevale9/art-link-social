@@ -21,7 +21,7 @@ const login = asyncHandler(async (req, res) => {
   if (!match) throw new ApiError(401, "Unauthorized");
 
   // Costruisci payload e userData in base al ruolo
-  const { payload, userData } = buildUserInfo(user);
+  const { payload, userData } = await buildUserInfo(user);
 
   // Generazione token
   const accessToken = generateAccessToken(payload);
@@ -52,7 +52,7 @@ const refresh = asyncHandler(async (req, res) => {
   }
 
   // Ricostruisci payload e userData
-  const { payload, userData } = buildUserInfo(user);
+  const { payload, userData } = await buildUserInfo(user);
 
   const accessToken = generateAccessToken(payload);
   // Puoi scegliere se rigenerare o riutilizzare lo stesso refresh token

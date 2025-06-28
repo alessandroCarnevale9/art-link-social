@@ -12,7 +12,7 @@ const getDataUri = require("../utils/datauri");
 const { uploadToCloudinary } = require("../utils/cloudinary");
 
 // @desc Get all users (admin only)
-// @route GET /users
+// @route GET /api/users
 // @access Admin
 const getAllUsers = asyncHandler(async (req, res) => {
   if (req.userRole !== "admin") {
@@ -23,32 +23,29 @@ const getAllUsers = asyncHandler(async (req, res) => {
   const limit = Math.min(parseInt(req.query.limit) || 20, 100);
   const skip = (page - 1) * limit;
 
+  // 1) recupera solo i campi essenziali
   const [total, users] = await Promise.all([
     User.countDocuments(),
-    User.find()
-      .select("-passwordHash")
-      .populate("followers")
-      .populate("following")
-      .populate("comments")
-      .skip(skip)
-      .limit(limit)
-      .lean(),
+    User.find().select("-passwordHash").skip(skip).limit(limit).lean(),
   ]);
 
-  const data = users.map((u) => buildUserInfo(u).userData);
+  // 2) per ciascun utente, ricava via buildUserInfo i contatori
+  const data = await Promise.all(
+    users.map(async (u) => {
+      const { userData } = await buildUserInfo(u);
+      return userData;
+    })
+  );
 
   res.json({ total, page, limit, data });
 });
 
 // @desc Get a user
-// @route GET /users/:id
+// @route GET /api/users/:id
 // @access Admin or general (self or other general)
 const getUser = asyncHandler(async (req, res) => {
   const targetUser = await User.findById(req.params.id)
     .select("-passwordHash")
-    .populate("followers")
-    .populate("following")
-    .populate("comments")
     .lean();
   if (!targetUser) {
     throw new ApiError(404, "User not found.");
@@ -62,7 +59,7 @@ const getUser = asyncHandler(async (req, res) => {
     }
   }
 
-  const { userData } = buildUserInfo(targetUser);
+  const { userData } = await buildUserInfo(targetUser);
   res.json(userData);
 });
 
@@ -82,7 +79,6 @@ const createUser = asyncHandler(async (req, res) => {
   const passwordHash = await bcrypt.hash(password, salt);
 
   let newUser;
-  // Creazione utente nel DB con discriminatori
   if (role === "admin") {
     newUser = await AdminUser.create({
       email: email.trim().toLowerCase(),
@@ -99,15 +95,12 @@ const createUser = asyncHandler(async (req, res) => {
     });
   }
 
-  // Genera payload e userData in base al ruolo
-  const { payload, userData } = buildUserInfo(newUser);
+  const { payload, userData } = await buildUserInfo(newUser);
 
-  // Generazione token
   const accessToken = generateAccessToken(payload);
   const refreshToken = generateRefreshToken(payload);
   attachRefreshTokenCookie(res, refreshToken);
 
-  // Rispondi con userData e accessToken
   res.status(201).json({ userData, accessToken });
 });
 
