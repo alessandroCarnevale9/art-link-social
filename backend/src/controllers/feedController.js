@@ -10,11 +10,11 @@ const { buildPagination } = require("../utils/queryHelpers");
  * – supporta page, limit, sortBy (date|popularity)
  */
 const getFeed = asyncHandler(async (req, res) => {
-  // 1) prendi l’ID dell’utente dal JWT
+  // prendi l’ID dell’utente dal JWT
   const userId = req.userId;
   if (!userId) throw new ApiError(401, "Unauthorized");
 
-  // 2) prendi la lista di followeeId
+  // prendi la lista di followeeId
   const followDocs = await Follow.find({ followerId: userId })
     .select("followeeId -_id")
     .lean();
@@ -23,11 +23,11 @@ const getFeed = asyncHandler(async (req, res) => {
     return res.json({ total: 0, page: 1, limit: 0, data: [] });
   }
 
-  // 3) paginazione e sort
+  // paginazione e sort
   const { page, limit, skip } = buildPagination(req);
   const sortBy = req.query.sortBy === "popularity" ? "popularity" : "date";
 
-  // 4) build filtro e sort
+  // build filtro e sort
   const filter = { authorId: { $in: authors } };
   let sort;
   if (sortBy === "popularity") {
@@ -48,7 +48,6 @@ const getFeed = asyncHandler(async (req, res) => {
       .lean(),
   ]);
 
-  // 6) rispondi
   res.json({ total, page, limit, data });
 });
 
