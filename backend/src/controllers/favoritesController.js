@@ -2,73 +2,77 @@ const asyncHandler = require("express-async-handler");
 const ApiError = require("../utils/ApiError");
 const { GeneralUser } = require("../models/UserModel");
 const Artwork = require("../models/ArtworkModel");
+const Favorite = require("../models/FavoriteModel");
 
 /**
- * POST /api/users/artworks/:id/favorite
+ * POST /api/users/:id/favorites/:artworkId
  * Adds an artwork to the authenticated user’s favorites
  */
 const addFavorite = asyncHandler(async (req, res) => {
-  const userId = req.userId;
-  const artworkId = req.params.id;
+  const userId = req.params.id === "me" ? req.userId : req.params.id;
+  const artworkId = req.params.artworkId;
 
   // Controlla che l'opera esista
-  const art = await Artwork.findById(artworkId).lean();
-  if (!art) throw new ApiError(404, "Artwork not found.");
+  const artExists = await Artwork.exists({ _id: artworkId });
+  if (!artExists) throw new ApiError(404, "Artwork not found.");
 
-  // Aggiunge solo se non è già nei preferiti
-  const user = await GeneralUser.findOneAndUpdate(
-    { _id: userId, likedArtworks: { $ne: artworkId } },
-    { $addToSet: { likedArtworks: artworkId } },
-    { new: true }
-  );
-  if (!user) throw new ApiError(409, "Artwork is already in favorites.");
+  // Crea un nuovo documento Favorite; l'indice unico previene duplicati
+  try {
+    await Favorite.create({ user: userId, artwork: artworkId });
+  } catch (e) {
+    if (e.code === 11000) {
+      // Duplicate key error
+      throw new ApiError(409, "Artwork is already in favorites.");
+    }
+    throw e;
+  }
 
   res.status(201).json({ message: "Artwork added to favorites." });
 });
 
 /**
- * DELETE /api/users/artworks/:id/favorite
+ * DELETE /api/users/:id/favorites/:artworkId
  * Removes an artwork from the authenticated user’s favorites
  */
 const removeFavorite = asyncHandler(async (req, res) => {
-  const userId = req.userId;
-  const artworkId = req.params.id;
+  const userId = req.params.id === "me" ? req.userId : req.params.id;
+  const artworkId = req.params.artworkId;
 
-  // Rimuove solo se era già nei preferiti
-  const user = await GeneralUser.findOneAndUpdate(
-    { _id: userId, likedArtworks: artworkId },
-    { $pull: { likedArtworks: artworkId } },
-    { new: true }
-  );
+  const result = await Favorite.findOneAndDelete({
+    user: userId,
+    artwork: artworkId,
+  });
 
-  if (!user) {
-    // o l'utente non esiste, o quell'artwork non era nei suoi preferiti
-    throw new ApiError(404, "Artwork was not in favorites or user not found.");
+  if (!result) {
+    throw new ApiError(404, "Favorite not found.");
   }
 
-  res.json({ message: "Artwork removed from favorites." });
+  // Convenzione: 204 No Content per delete
+  res.status(204).send();
 });
 
 /**
- * GET /api/users/favorites
- * GET /api/users/favorites/:id
+ * GET /api/users/:id/favorites
  * Retrieves the list of favorites for the authenticated user or any other user
  */
 const getFavorites = asyncHandler(async (req, res) => {
-  const targetId = req.params.id || req.userId;
-  const user = await GeneralUser.findById(targetId)
+  const userId = req.params.id === "me" ? req.userId : req.params.id;
+
+  // Trova tutti i Favorite di questo utente e popola l'artwork
+  const favs = await Favorite.find({ user: userId })
     .populate({
-      path: "likedArtworks",
+      path: "artwork",
       select:
         "title publishDate linkResource medium dimensions origin description",
       populate: [
-        { path: "artistId", select: "name" },
+        { path: "artistId", select: "displayName" },
         { path: "categories", select: "name" },
       ],
     })
     .lean();
-  if (!user) throw new ApiError(404, "User not found.");
-  res.json(user.likedArtworks);
+
+  // Restituisci solo gli artwork
+  res.json(favs.map((f) => f.artwork));
 });
 
 module.exports = {

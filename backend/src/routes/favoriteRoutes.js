@@ -1,20 +1,19 @@
-// src/routes/favoriteRoutes.js
 const express = require("express");
-const router = express.Router();
+const router = express.Router({ mergeParams: true });
 const verifyJWT = require("../middleware/verifyJWT");
 const mapMe = require("../middleware/mapMe");
-const favCtrl = require("../controllers/favoritesController");
+const ctrl = require("../controllers/favoritesController");
 
+// Proteggi tutte le rotte
 router.use(verifyJWT);
+router.use(mapMe);
 
-// “Me” endpoint: get my favorites
-router.get("/favorites", mapMe, favCtrl.getFavorites);
+// GET    /api/users/:id/favorites
+router.get("/favorites", ctrl.getFavorites);
 
-// Public endpoint: get another user’s favorites
-router.get("/favorites/:id", favCtrl.getFavorites);
-
-// Add / remove favorites on artworks
-router.post("/artworks/:id/favorite", favCtrl.addFavorite);
-router.delete("/artworks/:id/favorite", favCtrl.removeFavorite);
+// POST   /api/users/:id/favorites/:artworkId
+router.post("/favorites/:artworkId", ctrl.addFavorite);
+// DELETE /api/users/:id/favorites/:artworkId
+router.delete("/favorites/:artworkId", ctrl.removeFavorite);
 
 module.exports = router;

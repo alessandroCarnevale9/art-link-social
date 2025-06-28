@@ -1,19 +1,21 @@
 const express = require("express");
-const router = express.Router();
+const router = express.Router({ mergeParams: true });
 const verifyJWT = require("../middleware/verifyJWT");
 const mapMe = require("../middleware/mapMe");
-const followCtrl = require("../controllers/followController");
+const ctrl = require("../controllers/followController");
 
+// Tutte le rotte richiedono autenticazione
 router.use(verifyJWT);
+router.use(mapMe);
 
-// “Me” endpoints
-router.get("/followers", mapMe, followCtrl.getFollowers);
-router.get("/following", mapMe, followCtrl.getFollowing);
+// POST   /api/users/:id/follow
+router.post("/follow", ctrl.followUser);
+// DELETE /api/users/:id/follow
+router.delete("/follow", ctrl.unfollowUser);
 
-// Public endpoints by user ID
-router.post("/:id", followCtrl.followUser);
-router.delete("/:id", followCtrl.unfollowUser);
-router.get("/followers/:id", followCtrl.getFollowers);
-router.get("/following/:id", followCtrl.getFollowing);
+// GET    /api/users/:id/followers
+router.get("/followers", ctrl.getFollowers);
+// GET    /api/users/:id/following
+router.get("/following", ctrl.getFollowing);
 
 module.exports = router;

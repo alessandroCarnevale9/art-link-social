@@ -1,6 +1,6 @@
-// src/controllers/followController.js
 const asyncHandler = require("express-async-handler");
 const ApiError = require("../utils/ApiError");
+const { User } = require("../models/UserModel");
 const Follow = require("../models/FollowModel");
 const notificationService = require("../services/notificationService");
 
@@ -8,24 +8,34 @@ const notificationService = require("../services/notificationService");
 const followUser = asyncHandler(async (req, res) => {
   const followerId = req.userId;
   const followeeId = req.params.id;
+
   if (followerId === followeeId) {
     throw new ApiError(400, "You cannot follow yourself.");
   }
 
-  // Creazione del follow (indice unico previene duplicati)
-  try {
-    await Follow.create({ followerId, followeeId });
-  } catch (err) {
-    if (err.code === 11000) {
-      throw new ApiError(409, "You are already following this user.");
-    }
-    throw err;
+  // Verifica che l’utente esista
+  const exists = await User.exists({ _id: followeeId });
+  if (!exists) throw new ApiError(404, "User not found.");
+
+  // Crea o ignora duplicato
+  const result = await Follow.findOneAndUpdate(
+    { followerId, followeeId },
+    { $setOnInsert: { followerId, followeeId, followDate: Date.now() } },
+    { upsert: true, new: false }
+  );
+
+  // Se new:true => era un insert
+  if (result) {
+    // ignora: già seguito
+    return res.status(204).send();
   }
 
-  // Notifica di nuovo follower
-  await notificationService.notifyNewFollower(followerId, followeeId);
+  // Notifica in background
+  notificationService
+    .notifyNewFollower(followerId, followeeId)
+    .catch(console.error);
 
-  res.status(201).json({ message: "You are now following this user." });
+  res.status(201).json({ message: "Now following user." });
 });
 
 // DELETE /users/:id/follow

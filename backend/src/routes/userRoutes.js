@@ -10,6 +10,9 @@ const {
 const upload = require("../middleware/multer");
 const mapMe = require("../middleware/mapMe");
 
+const followRoutes = require("./followRoutes");
+const favoriteRoutes = require("./favoriteRoutes");
+
 // Registrazione aperta a tutti
 router.post("/register", validateUser, usersCtrl.createUser);
 
@@ -40,6 +43,9 @@ router
     usersCtrl.updateUser
   )
   .delete(verifyJWT, usersCtrl.deleteUser);
+
+router.use("/:id", followRoutes);
+router.use("/:id", favoriteRoutes);
 
 module.exports = router;
 

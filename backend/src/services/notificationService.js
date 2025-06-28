@@ -1,4 +1,3 @@
-// src/services/notificationService.js
 const Notification = require("../models/NotificationModel");
 
 async function notifyNewFollower(followerId, followeeId) {

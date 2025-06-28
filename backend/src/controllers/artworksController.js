@@ -23,49 +23,155 @@ const getAllArtworks = asyncHandler(async (req, res) => {
     sortBy = "date",
   } = req.query;
 
-  const filter = {};
-  if (title) filter.title = new RegExp(title, "i");
-  if (tag) filter.tags = tag;
-  if (category) filter.categories = category;
-  if (artistId) filter.artistId = artistId;
-  if (artworkPeriod) filter.artworkPeriod = artworkPeriod;
+  // 1) Build filtro
+  const match = {};
+  if (title) match.title = { $regex: title, $options: "i" };
+  if (tag) match.tags = tag;
+  if (category) match.categories = mongoose.Types.ObjectId(category);
+  if (artistId) match.artistId = mongoose.Types.ObjectId(artistId);
+  if (artworkPeriod) match.artworkPeriod = artworkPeriod;
 
-  let sort = { createdAt: -1 };
+  // 2) Aggregation pipeline
+  const pipeline = [
+    { $match: match },
+    // popola artist e categories
+    {
+      $lookup: {
+        from: "artists",
+        localField: "artistId",
+        foreignField: "_id",
+        as: "artist",
+      },
+    },
+    { $unwind: { path: "$artist", preserveNullAndEmptyArrays: true } },
+    {
+      $lookup: {
+        from: "categories",
+        localField: "categories",
+        foreignField: "_id",
+        as: "categories",
+      },
+    },
+    // conta i favorites
+    {
+      $lookup: {
+        from: "favorites",
+        localField: "_id",
+        foreignField: "artwork",
+        as: "favorites",
+      },
+    },
+    {
+      $addFields: {
+        favoritesCount: { $size: "$favorites" },
+      },
+    },
+    // rimuovi l'array favorites, non serve
+    { $project: { favorites: 0 } },
+  ];
+
+  // 3) Ordine
   if (sortBy === "popularity") {
-    sort = { favoritesCount: -1, createdAt: -1 };
+    pipeline.push({ $sort: { favoritesCount: -1, createdAt: -1 } });
+  } else {
+    pipeline.push({ $sort: { createdAt: -1 } });
   }
 
-  const [total, data] = await Promise.all([
-    Artwork.countDocuments(filter),
-    Artwork.find(filter)
-      .populate("artistId", "displayName")
-      .populate("categories", "name")
-      .sort(sort)
-      .skip(skip)
-      .limit(limit)
-      .lean(),
+  // 4) Paginazione
+  pipeline.push({ $skip: skip }, { $limit: limit });
+
+  // 5) Esecuzione
+  const [data, totalArr] = await Promise.all([
+    Artwork.aggregate(pipeline),
+    Artwork.countDocuments(match),
   ]);
+  const total = totalArr;
 
   res.json({ total, page, limit, data });
 });
 
 /**
  * GET /api/artworks/:id
- * – Public
- * – Detail: metadata, author, artist, categories, commentsCount, favoritesCount
+ * – Public – Detail: metadata, author, artist, categories, commentsCount, favoritesCount
  */
 const getArtworkById = asyncHandler(async (req, res) => {
-  const art = await Artwork.findById(req.params.id)
-    .populate("artistId", "displayName bio")
-    .populate("authorId", "firstName lastName profileImage")
-    .populate("categories", "name")
-    .lean();
-  if (!art) throw new ApiError(404, "Artwork not found.");
+  const artId = mongoose.Types.ObjectId(req.params.id);
 
-  art.commentsCount = art.comments?.length ?? 0;
-  art.favoritesCount = art.favorites?.length ?? 0;
+  const pipeline = [
+    { $match: { _id: artId } },
+    // author
+    {
+      $lookup: {
+        from: "users",
+        localField: "authorId",
+        foreignField: "_id",
+        as: "author",
+      },
+    },
+    { $unwind: "$author" },
+    // artist
+    {
+      $lookup: {
+        from: "artists",
+        localField: "artistId",
+        foreignField: "_id",
+        as: "artist",
+      },
+    },
+    { $unwind: { path: "$artist", preserveNullAndEmptyArrays: true } },
+    // categories
+    {
+      $lookup: {
+        from: "categories",
+        localField: "categories",
+        foreignField: "_id",
+        as: "categories",
+      },
+    },
+    // comments count
+    {
+      $lookup: {
+        from: "comments",
+        localField: "_id",
+        foreignField: "artworkId",
+        as: "comments",
+      },
+    },
+    {
+      $addFields: {
+        commentsCount: { $size: "$comments" },
+      },
+    },
+    // favorites count
+    {
+      $lookup: {
+        from: "favorites",
+        localField: "_id",
+        foreignField: "artwork",
+        as: "favorites",
+      },
+    },
+    {
+      $addFields: {
+        favoritesCount: { $size: "$favorites" },
+      },
+    },
+    // proiettare via i campi temporanei
+    {
+      $project: {
+        comments: 0,
+        favorites: 0,
+        "author.passwordHash": 0,
+        "author.role": 0,
+        "author.isActive": 0,
+        "author.__v": 0,
+      },
+    },
+  ];
 
-  res.json(art);
+  const [result] = await Artwork.aggregate(pipeline);
+  if (!result) throw new ApiError(404, "Artwork not found.");
+  res.json(result);
 });
 
 /**
