@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 require("./FavoriteModel");
+require("./CommentModel");
 
 const artworkSchema = new Schema(
   {
@@ -48,7 +49,6 @@ const artworkSchema = new Schema(
   }
 );
 
-
 // Virtual populate per i commenti
 artworkSchema.virtual("comments", {
   ref: "Comment",
@@ -59,22 +59,22 @@ artworkSchema.virtual("comments", {
 
 // Virtual populate per i favoriti
 artworkSchema.virtual("favorites", {
-  ref: "Favorite",      // o il model che usi per le preferenze
+  ref: "Favorite", // o il model che usi per le preferenze
   localField: "_id",
   foreignField: "artwork",
   justOne: false,
 });
 
 // Virtual counts
-artworkSchema.virtual("commentsCount").get(function() {
+artworkSchema.virtual("commentsCount").get(function () {
   return this.comments?.length ?? 0;
 });
-artworkSchema.virtual("favoritesCount").get(function() {
+artworkSchema.virtual("favoritesCount").get(function () {
   return this.favorites?.length ?? 0;
 });
 
 // Abilita i virtual anche in toJSON
 artworkSchema.set("toObject", { virtuals: true });
-artworkSchema.set("toJSON",   { virtuals: true });
+artworkSchema.set("toJSON", { virtuals: true });
 
 module.exports = mongoose.model("Artwork", artworkSchema);

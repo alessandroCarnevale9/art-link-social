@@ -1,4 +1,3 @@
-// src/models/UserModel.js
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
 
@@ -31,7 +30,6 @@ const BaseUserSchema = new Schema(
 
 const User = mongoose.model("User", BaseUserSchema);
 
-// General user schema (senza più likedArtworks)
 const GeneralSchema = new Schema(
   {
     firstName: {
@@ -50,7 +48,6 @@ const GeneralSchema = new Schema(
     },
     bio: { type: String, trim: true, maxlength: 160, default: "" },
     profileImage: { type: String, trim: true },
-    // <-- likedArtworks rimosso, gestito ora tramite FavoriteModel
   },
   { timestamps: true }
 );

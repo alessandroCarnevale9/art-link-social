@@ -1,4 +1,3 @@
-// middleware/userValidation.js
 const ApiError = require("../utils/ApiError");
 const {
   validateEmail,

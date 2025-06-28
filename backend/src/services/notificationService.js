@@ -9,4 +9,16 @@ async function notifyNewFollower(followerId, followeeId) {
   });
 }
 
-module.exports = { notifyNewFollower };
+async function notifyNewComment(commenterId, artworkOwnerId, artworkId) {
+  return Notification.create({
+    userId: artworkOwnerId,
+    type: "NewComment",
+    message: "Someone commented on your artwork.",
+    fromUserId: commenterId,
+  });
+}
+
+module.exports = {
+  notifyNewFollower,
+  notifyNewComment,
+};

@@ -47,7 +47,6 @@ const removeFavorite = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Favorite not found.");
   }
 
-  // Convenzione: 204 No Content per delete
   res.status(204).send();
 });
 

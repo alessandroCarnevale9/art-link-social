@@ -27,12 +27,14 @@ app.get("/server-status", (req, res) => {
 app.use(logger);
 app.use(cors());
 app.use(cookieParser());
-app.use(express.json()); // middleware that parse JSON strings
+app.use(express.json());
 
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/users", require("./routes/userRoutes"));
 app.use("/api/categories", require("./routes/categoryRoutes"));
 app.use("/api/artworks", require("./routes/artworkRoutes"));
+app.use("/api/artworks/:id/comments", require("./routes/commentRoutes"));
+app.use("/api/notifications", require("./routes/notificationRoutes"));
 
 process.on("SIGINT", async () => {
   try {

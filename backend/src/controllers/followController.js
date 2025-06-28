@@ -13,7 +13,6 @@ const followUser = asyncHandler(async (req, res) => {
     throw new ApiError(400, "You cannot follow yourself.");
   }
 
-  // Verifica che l’utente esista
   const exists = await User.exists({ _id: followeeId });
   if (!exists) throw new ApiError(404, "User not found.");
 
@@ -24,7 +23,7 @@ const followUser = asyncHandler(async (req, res) => {
     { upsert: true, new: false }
   );
 
-  // Se new:true => era un insert
+  // Se new:true allora era un insert
   if (result) {
     // ignora: già seguito
     return res.status(204).send();

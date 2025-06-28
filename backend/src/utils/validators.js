@@ -1,6 +1,5 @@
 const validator = require("validator");
 
-// Ruoli e opzioni password rimangono invariati
 const ALLOWED_ROLES = ["general", "admin"];
 const PW_OPTIONS = {
   minLength: 8,
@@ -43,7 +42,6 @@ function validateRole(role) {
   }
 }
 
-// Funzione generica per nomi
 function validateName(name, fieldName) {
   if (name === undefined || name === null || name === "") {
     return `${fieldName} is required.`;
@@ -65,7 +63,6 @@ function validateName(name, fieldName) {
   }
 }
 
-// Wrapper specifici
 function validateFirstName(firstName) {
   return validateName(firstName, "firstName");
 }
@@ -74,7 +71,6 @@ function validateLastName(lastName) {
   return validateName(lastName, "lastName");
 }
 
-// Validazione bio (opzionale, ma se presente non supera i 160 caratteri)
 function validateBio(bio) {
   if (bio === undefined || bio === null || bio === "") {
     return; // ok, è opzionale
@@ -87,7 +83,6 @@ function validateBio(bio) {
   }
 }
 
-// Validazione profileImage (opzionale, ma se presente deve essere un URL valido)
 function validateProfileImage(url) {
   if (url === undefined || url === null || url === "") {
     return; // ok, fallback al default

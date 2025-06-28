@@ -1,4 +1,3 @@
-// src/models/FavoriteModel.js
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
 
