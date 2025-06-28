@@ -25,7 +25,14 @@ const getAllUsers = asyncHandler(async (req, res) => {
 
   const [total, users] = await Promise.all([
     User.countDocuments(),
-    User.find().select("-passwordHash").skip(skip).limit(limit).lean(),
+    User.find()
+      .select("-passwordHash")
+      .populate("followers")
+      .populate("following")
+      .populate("comments")
+      .skip(skip)
+      .limit(limit)
+      .lean(),
   ]);
 
   const data = users.map((u) => buildUserInfo(u).userData);
@@ -39,6 +46,9 @@ const getAllUsers = asyncHandler(async (req, res) => {
 const getUser = asyncHandler(async (req, res) => {
   const targetUser = await User.findById(req.params.id)
     .select("-passwordHash")
+    .populate("followers")
+    .populate("following")
+    .populate("comments")
     .lean();
   if (!targetUser) {
     throw new ApiError(404, "User not found.");
