@@ -2,12 +2,13 @@ const asyncHandler = require("express-async-handler");
 const ApiError = require("../utils/ApiError");
 const Artwork = require("../models/ArtworkModel");
 const Category = require("../models/CategoryModel");
+require("../models/ArtistModel");
 
 /**
  * GET /api/artworks
- * – Pubblico (guest o autenticato)
- * – Filtri: title (keyword), tag, category, artistId, artworkPeriod
- * – Ordinamento: relevance (default = createdAt desc), date (createdAt), popularity (favoritesCount)
+ * – Public
+ * – Filters: title, tag, category, artistId, artworkPeriod
+ * – Sort: date (createdAt desc), popularity (favoritesCount desc)
  */
 const getAllArtworks = asyncHandler(async (req, res) => {
   const page = Math.max(parseInt(req.query.page) || 1, 1);
@@ -19,7 +20,7 @@ const getAllArtworks = asyncHandler(async (req, res) => {
     category,
     artistId,
     artworkPeriod,
-    sortBy = "date", // “date” | “popularity”
+    sortBy = "date",
   } = req.query;
 
   const filter = {};
@@ -29,17 +30,15 @@ const getAllArtworks = asyncHandler(async (req, res) => {
   if (artistId) filter.artistId = artistId;
   if (artworkPeriod) filter.artworkPeriod = artworkPeriod;
 
-  // costruisco l'ordinamento
   let sort = { createdAt: -1 };
   if (sortBy === "popularity") {
-    // presuppone che favoritesCount sia un campo aggiornato altrove
     sort = { favoritesCount: -1, createdAt: -1 };
   }
 
   const [total, data] = await Promise.all([
     Artwork.countDocuments(filter),
     Artwork.find(filter)
-      .populate("artistId", "name")
+      .populate("artistId", "displayName")
       .populate("categories", "name")
       .sort(sort)
       .skip(skip)
@@ -52,30 +51,32 @@ const getAllArtworks = asyncHandler(async (req, res) => {
 
 /**
  * GET /api/artworks/:id
- * – Pubblico
- * – Dettaglio completo: metadata, author, artist, categories, commentsCount, favoritesCount
+ * – Public
+ * – Detail: metadata, author, artist, categories, commentsCount, favoritesCount
  */
 const getArtworkById = asyncHandler(async (req, res) => {
   const art = await Artwork.findById(req.params.id)
-    .populate("artistId", "name bio")
+    .populate("artistId", "displayName bio")
     .populate("authorId", "firstName lastName profileImage")
     .populate("categories", "name")
     .lean();
   if (!art) throw new ApiError(404, "Artwork not found.");
 
-  // Aggiungo contatori (presupponendo esistano campi o virtuals)
-  art.commentsCount = art.comments?.length || 0;
-  art.favoritesCount = art.favorites?.length || 0;
+  art.commentsCount = art.comments?.length ?? 0;
+  art.favoritesCount = art.favorites?.length ?? 0;
 
   res.json(art);
 });
 
 /**
  * POST /api/artworks
- * – Admin può creare qualunque opera (origin = AdminUploaded o UserUploaded)
- * – General user può creare solo origin = UserUploaded e authorId = se stesso
+ * – Admin: any origin & authorId defaults to req.userId if not provided
+ * – General: origin=UserUploaded & authorId=req.userId
  */
 const createArtwork = asyncHandler(async (req, res) => {
+  const meId = req.userId;
+  const meRole = req.userRole;
+
   const {
     title,
     publishDate,
@@ -84,30 +85,38 @@ const createArtwork = asyncHandler(async (req, res) => {
     linkResource,
     medium,
     dimensions,
-    origin,
-    authorId,
+    origin: bodyOrigin,
+    authorId: bodyAuthorId,
     artistId,
     tags,
     categories,
     description,
   } = req.body;
 
-  if (!title?.trim()) throw new ApiError(400, "Title is required.");
+  if (!title?.trim()) {
+    throw new ApiError(400, "Title is required.");
+  }
 
-  // gestione permessi
-  if (req.userRole === "general") {
-    // general user deve avere origin = UserUploaded e authorId = req.userId
-    if (origin !== "UserUploaded" || authorId !== req.userId) {
-      throw new ApiError(403, "You can only upload your own artworks.");
-    }
-  } else if (req.userRole !== "admin") {
+  // Determino authorId e origin in base al ruolo
+  let authorId;
+  let origin;
+  if (meRole === "general") {
+    authorId = meId;
+    origin = "UserUploaded";
+  } else if (meRole === "admin") {
+    authorId = bodyAuthorId || meId;
+    // Se bodyOrigin è uno dei due valori consentiti, lo uso, altrimenti default
+    origin = ["AdminUploaded", "UserUploaded"].includes(bodyOrigin)
+      ? bodyOrigin
+      : "AdminUploaded";
+  } else {
     throw new ApiError(403, "Forbidden");
   }
 
-  // verifica categorie esistenti
+  // Validazione categorie (se presenti)
   if (categories?.length) {
-    const count = await Category.countDocuments({ _id: { $in: categories } });
-    if (count !== categories.length) {
+    const valid = await Category.countDocuments({ _id: { $in: categories } });
+    if (valid !== categories.length) {
       throw new ApiError(400, "One or more categories are invalid.");
     }
   }
@@ -133,26 +142,26 @@ const createArtwork = asyncHandler(async (req, res) => {
 
 /**
  * PATCH /api/artworks/:id
- * – Admin può modificare qualsiasi opera
- * – General user può modificare solo le proprie opere (origin = UserUploaded & authorId = se stesso)
+ * – Admin: can edit any
+ * – General: only own uploads
  */
 const updateArtwork = asyncHandler(async (req, res) => {
   const art = await Artwork.findById(req.params.id);
   if (!art) throw new ApiError(404, "Artwork not found.");
 
-  if (req.userRole === "general") {
-    if (
-      art.origin !== "UserUploaded" ||
-      art.authorId.toString() !== req.userId
-    ) {
+  const meId = req.userId;
+  const meRole = req.userRole;
+
+  if (meRole === "general") {
+    if (art.origin !== "UserUploaded" || art.authorId.toString() !== meId) {
       throw new ApiError(403, "You can only edit your own uploads.");
     }
-  } else if (req.userRole !== "admin") {
+  } else if (meRole !== "admin") {
     throw new ApiError(403, "Forbidden");
   }
 
   const update = {};
-  for (const f of [
+  for (const field of [
     "title",
     "publishDate",
     "artworkPeriod",
@@ -165,12 +174,12 @@ const updateArtwork = asyncHandler(async (req, res) => {
     "tags",
     "description",
   ]) {
-    if (req.body[f] !== undefined) update[f] = req.body[f];
+    if (req.body[field] !== undefined) update[field] = req.body[field];
   }
   if (req.body.categories) {
     const cats = req.body.categories;
-    const count = await Category.countDocuments({ _id: { $in: cats } });
-    if (count !== cats.length) throw new ApiError(400, "Invalid categories.");
+    const valid = await Category.countDocuments({ _id: { $in: cats } });
+    if (valid !== cats.length) throw new ApiError(400, "Invalid categories.");
     update.categories = cats;
   }
 
@@ -184,21 +193,21 @@ const updateArtwork = asyncHandler(async (req, res) => {
 
 /**
  * DELETE /api/artworks/:id
- * – Admin può eliminare qualsiasi opera
- * – General user può eliminare solo le proprie opere (UserUploaded)
+ * – Admin: any
+ * – General: only own uploads
  */
 const deleteArtwork = asyncHandler(async (req, res) => {
   const art = await Artwork.findById(req.params.id);
   if (!art) throw new ApiError(404, "Artwork not found.");
 
-  if (req.userRole === "general") {
-    if (
-      art.origin !== "UserUploaded" ||
-      art.authorId.toString() !== req.userId
-    ) {
+  const meId = req.userId;
+  const meRole = req.userRole;
+
+  if (meRole === "general") {
+    if (art.origin !== "UserUploaded" || art.authorId.toString() !== meId) {
       throw new ApiError(403, "You can only delete your own uploads.");
     }
-  } else if (req.userRole !== "admin") {
+  } else if (meRole !== "admin") {
     throw new ApiError(403, "Forbidden");
   }
 
