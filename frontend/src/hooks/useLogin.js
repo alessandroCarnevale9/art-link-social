@@ -1,37 +1,30 @@
 import { useState } from "react";
+import { login as apiLogin } from "../api/auth";
 import { useAuthContext } from "./useAuthContext";
 
 export const useLogin = () => {
-  const [errors, setErrors] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [errors, setErrors] = useState(null);
+  const [isLoading, setLoading] = useState(false);
   const { dispatch } = useAuthContext();
 
   const login = async (email, password) => {
-    setIsLoading(true);
-    setErrors([]);
+    setLoading(true);
+    setErrors(null);
+    try {
+      // chiama apiFetch("/api/auth/login", { method: "POST", body: { email, password } })
+      const json = await apiLogin({ email, password });
 
-    const response = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include", // include i cookies
-      body: JSON.stringify({ email, password }),
-    });
+      // salva token+userdata
+      localStorage.setItem("jwt", JSON.stringify(json));
 
-    const json = await response.json();
-
-    if (!response.ok) {
-      setIsLoading(false);
-      setErrors(json.errors);
-      return;
+      // aggiorna il context
+      dispatch({ type: "LOGIN", payload: json });
+    } catch (err) {
+      // err.payload viene da apiFetch in caso di 4xx/5xx
+      setErrors(err.payload?.errors || [err.message]);
+    } finally {
+      setLoading(false);
     }
-
-    // save JWT to local storage
-    localStorage.setItem("jwt", JSON.stringify(json));
-
-    // update the auth context
-    dispatch({ type: "LOGIN", payload: json });
-
-    setIsLoading(false);
   };
 
   return { login, isLoading, errors };

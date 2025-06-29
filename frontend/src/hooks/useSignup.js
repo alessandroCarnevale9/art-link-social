@@ -1,37 +1,36 @@
 import { useState } from "react";
+import { createUser } from "../api/users";
 import { useAuthContext } from "./useAuthContext";
 
 export const useSignup = () => {
-  const [errors, setErrors] = useState([]);
+  const [errors, setErrors] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const { dispatch } = useAuthContext();
 
   const signup = async (firstName, lastName, email, password, role) => {
     setIsLoading(true);
-    setErrors([]);
+    setErrors(null);
 
-    const response = await fetch("/api/users/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ firstName, lastName, email, password, role }),
-    });
+    try {
+      const json = await createUser({
+        firstName,
+        lastName,
+        email,
+        password,
+        role,
+      });
 
-    const json = await response.json();
+      // salva token + userData
+      localStorage.setItem("jwt", JSON.stringify(json));
 
-    if (!response.ok) {
+      // aggiorna il contesto
+      dispatch({ type: "LOGIN", payload: json });
+    } catch (err) {
+      // prendo eventuali errori dal body (err.payload.errors) o uso il messaggio
+      setErrors(err.payload?.errors || [err.message]);
+    } finally {
       setIsLoading(false);
-      setErrors(json.errors);
-      return;
     }
-
-    // save JWT to local storage
-    localStorage.setItem("jwt", JSON.stringify(json));
-
-    // update the auth context
-    dispatch({ type: "LOGIN", payload: json });
-
-    setIsLoading(false);
   };
 
   return { signup, isLoading, errors };

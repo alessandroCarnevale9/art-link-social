@@ -1,18 +1,21 @@
+// src/hooks/useLogout.js
 import { useAuthContext } from "./useAuthContext";
+import { logout as apiLogout } from "../api/auth";
 
 export const useLogout = () => {
   const { dispatch } = useAuthContext();
 
   const logout = async () => {
-    // remove user JWT from local storage
+    // Rimuovo subito il token in locale
     localStorage.removeItem("jwt");
 
-    await fetch("/api/auth/logout", {
-      method: "POST",
-      credentials: "include", // manda il cookie HTTP-only
-    });
+    try {
+      await apiLogout();
+    } catch (err) {
+      console.error("Logout error:", err);
+    }
 
-    // dispatch logout action
+    // Aggiorno il context
     dispatch({ type: "LOGOUT" });
   };
 

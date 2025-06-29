@@ -4,11 +4,10 @@ import { useLogin } from "../hooks/useLogin";
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const { login, errors, isLoading} = useLogin();
+  const { login, errors, isLoading } = useLogin();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     await login(email, password);
   };
 
@@ -19,19 +18,28 @@ const Login = () => {
       <label>Email:</label>
       <input
         type="email"
-        onChange={(e) => setEmail(e.target.value)}
         value={email}
+        onChange={(e) => setEmail(e.target.value)}
       />
 
       <label>Password:</label>
       <input
         type="password"
-        onChange={(e) => setPassword(e.target.value)}
         value={password}
+        onChange={(e) => setPassword(e.target.value)}
       />
 
-      <button disabled={isLoading}>Log in</button>
-      {errors && <div className="error">{errors}</div>}
+      <button disabled={isLoading}>{isLoading ? "Loading…" : "Log in"}</button>
+
+      {errors && (
+        <div className="error">
+          {Array.isArray(errors) ? (
+            errors.map((err, i) => <p key={i}>{err}</p>)
+          ) : (
+            <p>{errors}</p>
+          )}
+        </div>
+      )}
     </form>
   );
 };
