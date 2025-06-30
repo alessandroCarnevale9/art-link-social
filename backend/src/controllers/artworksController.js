@@ -64,7 +64,7 @@ const getAllArtworks = asyncHandler(async (req, res) => {
  * – Public – Detail: metadata, author, artist, categories, commentsCount, favoritesCount
  */
 const getArtworkById = asyncHandler(async (req, res) => {
-  const artId = mongoose.Types.ObjectId(req.params.id);
+  const artId = new mongoose.Types.ObjectId(req.params.id);
 
   const pipeline = [
     // 1) Seleziona l'opera

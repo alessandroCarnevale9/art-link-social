@@ -16,10 +16,16 @@ const getComments = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Artwork not found.");
   }
 
-  const comments = await Comment.find({ artworkId: artId })
+  let comments = await Comment.find({ artworkId: artId })
     .populate("authorId", "firstName lastName profileImage")
     .sort({ createdAt: -1 })
     .lean();
+
+  comments = comments.map((c) => ({
+    ...c,
+    author: c.authorId,
+    authorId: undefined,
+  }));
 
   res.json(comments);
 });

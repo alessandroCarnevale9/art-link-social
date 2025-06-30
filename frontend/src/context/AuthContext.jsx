@@ -1,4 +1,4 @@
-import { createContext, useReducer, useEffect } from "react";
+import { createContext, useReducer, useEffect, useState } from "react";
 
 export const AuthContext = createContext();
 
@@ -15,8 +15,6 @@ export const authReducer = (state, action) => {
 
 // Helper to decode JWT payload
 const parseJwt = (token) => {
-  // Un JWT token è fatto da tre parti: HEADER.PAYLOAD.SIGNATURE
-
   try {
     const [, payload] = token.split(".");
     return JSON.parse(atob(payload));
@@ -29,15 +27,39 @@ const parseJwt = (token) => {
 const isTokenValid = (token) => {
   if (!token) return false;
   const { exp } = parseJwt(token);
-  // exp is in seconds, Date.now() in ms
   return typeof exp === "number" && Date.now() < exp * 1000;
 };
 
 export const AuthContextProvider = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, { user: null });
+  // New loadingAuth state
+  const [loadingAuth, setLoadingAuth] = useState(true);
 
   useEffect(() => {
+    const handleLogout = () => {
+      localStorage.removeItem("jwt");
+      dispatch({ type: "LOGOUT" });
+    };
+
     const tryRefresh = async () => {
+      // 1) check localStorage
+      const raw = localStorage.getItem("jwt");
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          const token = parsed?.accessToken;
+          if (isTokenValid(token)) {
+            dispatch({ type: "LOGIN", payload: parsed });
+            setLoadingAuth(false);
+            return;
+          }
+        } catch {
+          // malformed JSON
+        }
+        localStorage.removeItem("jwt");
+      }
+
+      // 2) fallback: refresh via cookie
       try {
         const res = await fetch("/api/auth/refresh", {
           method: "GET",
@@ -45,46 +67,29 @@ export const AuthContextProvider = ({ children }) => {
         });
         if (!res.ok) {
           handleLogout();
-          return;
+        } else {
+          const json = await res.json();
+          localStorage.setItem("jwt", JSON.stringify(json));
+          dispatch({ type: "LOGIN", payload: json });
         }
-        const json = await res.json(); // user data + new access token
-        localStorage.setItem("jwt", JSON.stringify(json));
-        dispatch({ type: "LOGIN", payload: json });
       } catch (err) {
         console.error("Refresh error:", err);
         handleLogout();
+      } finally {
+        setLoadingAuth(false);
       }
     };
 
-    const handleLogout = () => {
-      localStorage.removeItem("jwt");
-      dispatch({ type: "LOGOUT" });
-    };
-
-    // 1) Leggo da localStorage e verifico che il token non sia scaduto
-    const raw = localStorage.getItem("jwt"); // access token + user data
-    if (raw) {
-      try {
-        const parsed = JSON.parse(raw);
-        const token = parsed?.accessToken;
-        if (isTokenValid(token)) {
-          dispatch({ type: "LOGIN", payload: parsed });
-          return;
-        }
-      } catch {
-        // JSON malformato
-      }
-      // Rimuovo token scaduto o malformato
-      localStorage.removeItem("jwt");
-    }
-    // 2) Fallback: refresh via cookie
     tryRefresh();
   }, [dispatch]);
 
-  console.log("AuthContext state:", state);
+  // While auth is loading, don't render children
+  if (loadingAuth) {
+    return null; // or a spinner
+  }
 
   return (
-    <AuthContext.Provider value={{ ...state, dispatch }}>
+    <AuthContext.Provider value={{ ...state, dispatch, loadingAuth }}>
       {children}
     </AuthContext.Provider>
   );

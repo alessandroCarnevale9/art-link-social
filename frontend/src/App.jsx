@@ -1,28 +1,74 @@
+import React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuthContext } from "./hooks/useAuthContext";
-import Home from "./pages/Home";
 import Navbar from "./components/Navbar";
+import Home from "./pages/Home";
+import PinDetail from "./pages/PinDetail";
+import CreatePin from "./pages/CreatePin"; // da implementare
+import EditPin from "./pages/EditPin"; // da implementare
+import AdminHome from "./pages/AdminHome";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
-import AdminHome from "./pages/AdminHome";
 
 const App = () => {
+  const { user, loadingAuth } = useAuthContext();
 
-  const { user } = useAuthContext();
+  // Finché non sappiamo se l'utente è autenticato,
+  // evitiamo di renderizzare le rotte e i loro guard,
+  // così non veniamo sbalzati su /login prematuramente.
+  if (loadingAuth) {
+    return <p>Loading...</p>;
+  }
 
   return (
-    <div className="App">
-      <BrowserRouter>
-        <Navbar />
-        <div className="pages">
-          <Routes>
-            <Route path="/" element={ user ? (user.userData.role === 'admin' ? <AdminHome /> : <Home />) : <Navigate to="/login" />} />
-            <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
-            <Route path="/signup" element={!user ? <Signup /> : <Navigate to="/" />} />
-          </Routes>
-        </div>
-      </BrowserRouter>
-    </div>
+    <BrowserRouter>
+      <Navbar />
+      <div className="pages">
+        <Routes>
+          {/* Home/AdminHome */}
+          <Route
+            path="/"
+            element={
+              user ? (
+                user.userData.role === "admin" ? (
+                  <AdminHome />
+                ) : (
+                  <Home />
+                )
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          />
+
+          {/* Dettaglio pin */}
+          <Route
+            path="/pin/:pinId"
+            element={user ? <PinDetail /> : <Navigate to="/login" />}
+          />
+
+          {/* CRUD opere */}
+          <Route
+            path="/create-pin"
+            element={user ? <CreatePin /> : <Navigate to="/login" />}
+          />
+          <Route
+            path="/edit-pin/:pinId"
+            element={user ? <EditPin /> : <Navigate to="/login" />}
+          />
+
+          {/* Autenticazione */}
+          <Route
+            path="/login"
+            element={!user ? <Login /> : <Navigate to="/" />}
+          />
+          <Route
+            path="/signup"
+            element={!user ? <Signup /> : <Navigate to="/" />}
+          />
+        </Routes>
+      </div>
+    </BrowserRouter>
   );
 };
 

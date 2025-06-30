@@ -31,9 +31,10 @@ app.use(express.json());
 
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/users", require("./routes/userRoutes"));
+app.use("/api/artists", require("./routes/artistRoutes"));
 app.use("/api/categories", require("./routes/categoryRoutes"));
-app.use("/api/artworks", require("./routes/artworkRoutes"));
 app.use("/api/artworks/:id/comments", require("./routes/commentRoutes"));
+app.use("/api/artworks", require("./routes/artworkRoutes"));
 app.use("/api/feed", require("./routes/feedRoutes"));
 app.use("/api/notifications", require("./routes/notificationRoutes"));
 app.use("/api/reports", require("./routes/reportRoutes"));
