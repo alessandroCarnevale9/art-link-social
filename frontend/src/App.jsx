@@ -7,6 +7,7 @@ import PinDetail from "./pages/PinDetail";
 import CreatePin from "./pages/CreatePin";
 import EditPin from "./pages/EditPin";
 import FavoritesList from "./pages/FavoritesList";
+import Profile from "./pages/Profile";
 import AdminHome from "./pages/AdminHome";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -59,6 +60,12 @@ const App = () => {
           <Route
             path="/favorites"
             element={user ? <FavoritesList /> : <Navigate to="/login" />}
+          />
+
+          {/* Profile */}
+          <Route
+            path="/profile/:userId"
+            element={user ? <Profile /> : <Navigate to="/login" />}
           />
 
           {/* Autenticazione */}

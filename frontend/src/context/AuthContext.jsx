@@ -13,7 +13,7 @@ export const authReducer = (state, action) => {
   }
 };
 
-// Helper to decode JWT payload
+// Decodifica il payload del JWT
 const parseJwt = (token) => {
   try {
     const [, payload] = token.split(".");
@@ -23,7 +23,7 @@ const parseJwt = (token) => {
   }
 };
 
-// Helper to validate JWT expiration
+// Controlla scadenza token
 const isTokenValid = (token) => {
   if (!token) return false;
   const { exp } = parseJwt(token);
@@ -32,34 +32,33 @@ const isTokenValid = (token) => {
 
 export const AuthContextProvider = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, { user: null });
-  // New loadingAuth state
   const [loadingAuth, setLoadingAuth] = useState(true);
 
   useEffect(() => {
+    // Svuota localStorage e logout in caso di token non valido
     const handleLogout = () => {
       localStorage.removeItem("jwt");
       dispatch({ type: "LOGOUT" });
     };
 
-    const tryRefresh = async () => {
-      // 1) check localStorage
+    const initializeAuth = async () => {
+      // 1) Provo a prendere il token da localStorage
       const raw = localStorage.getItem("jwt");
       if (raw) {
         try {
           const parsed = JSON.parse(raw);
-          const token = parsed?.accessToken;
-          if (isTokenValid(token)) {
+          if (isTokenValid(parsed.accessToken)) {
             dispatch({ type: "LOGIN", payload: parsed });
             setLoadingAuth(false);
             return;
           }
         } catch {
-          // malformed JSON
+          /* JSON malformato */
         }
         localStorage.removeItem("jwt");
       }
 
-      // 2) fallback: refresh via cookie
+      // 2) Se non ho token valido, provo il refresh via cookie
       try {
         const res = await fetch("/api/auth/refresh", {
           method: "GET",
@@ -72,20 +71,19 @@ export const AuthContextProvider = ({ children }) => {
           localStorage.setItem("jwt", JSON.stringify(json));
           dispatch({ type: "LOGIN", payload: json });
         }
-      } catch (err) {
-        console.error("Refresh error:", err);
+      } catch {
         handleLogout();
       } finally {
         setLoadingAuth(false);
       }
     };
 
-    tryRefresh();
+    initializeAuth();
   }, [dispatch]);
 
-  // While auth is loading, don't render children
+  // Finché siamo in fase di verifica non mostriamo i figli
   if (loadingAuth) {
-    return null; // or a spinner
+    return <p>Loading authentication…</p>;
   }
 
   return (
