@@ -104,28 +104,45 @@ const createUser = asyncHandler(async (req, res) => {
   res.status(201).json({ userData, accessToken });
 });
 
-// @desc Update a user
-// @route PATCH /users/:id
+// @desc Update a user (self or admin)
+// @route PATCH /api/users/:id (o /api/users/me tramite mapMe)
 // @access Admin or User self
 const updateUser = asyncHandler(async (req, res) => {
   const { id } = req.params;
+
+  // 1) Verifico che l'utente esista
   const targetUser = await User.findById(id).exec();
   if (!targetUser) throw new ApiError(404, "User not found.");
 
+  // 2) Controllo permessi: admin o se stesso
   const meEmail = req.userEmail.toLowerCase();
   const meRole = req.userRole;
   const isSelf = targetUser.email.toLowerCase() === meEmail;
+
   if (meRole !== "admin" && !isSelf) {
     throw new ApiError(403, "Forbidden");
   }
 
+  // 3) Non permetto di cambiare il role qui
   if (req.body.role !== undefined) {
-    throw new ApiError(400, "Role cannot be changed once set.");
+    throw new ApiError(400, "Role cannot be changed here.");
   }
 
-  const isTargetGeneral = targetUser.role === "general";
+  // 4) Preparo updateData con tutti i campi ammessi
   const updateData = {};
 
+  // — Dati base (self o admin)
+  if (req.body.firstName !== undefined) {
+    updateData.firstName = req.body.firstName.trim();
+  }
+  if (req.body.lastName !== undefined) {
+    updateData.lastName = req.body.lastName.trim();
+  }
+  if (req.body.bio !== undefined) {
+    updateData.bio = req.body.bio.trim();
+  }
+
+  // — Email e password
   if (req.body.email) {
     updateData.email = req.body.email.trim().toLowerCase();
   }
@@ -133,33 +150,31 @@ const updateUser = asyncHandler(async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     updateData.passwordHash = await bcrypt.hash(req.body.password, salt);
   }
+
+  // — Solo admin può modificare isActive
   if (meRole === "admin" && typeof req.body.isActive !== "undefined") {
     updateData.isActive = req.body.isActive;
   }
 
-  // campi extra solo se utente general
-  if (isTargetGeneral) {
-    if (req.body.firstName !== undefined) {
-      updateData.firstName = req.body.firstName.trim();
-    }
-    if (req.body.lastName !== undefined) {
-      updateData.lastName = req.body.lastName.trim();
-    }
-    if (req.body.bio !== undefined) {
-      updateData.bio = req.body.bio.trim();
-    }
-    // if (req.body.profileImage !== undefined) {
-    //   updateData.profileImage = req.body.profileImage.trim();
-    // }
-
-    if (req.file) {
-      const fileUri = getDataUri(req.file);
-      const cloudResponse = await uploadToCloudinary(fileUri);
-      updateData.profileImage = cloudResponse.secure_url;
-    }
+  // — Se multer ha estratto req.file, upload dell'immagine
+  if (req.file) {
+    const fileUri = getDataUri(req.file);
+    const cloudResponse = await uploadToCloudinary(fileUri);
+    updateData.profileImage = cloudResponse.secure_url;
   }
 
-  const updated = await User.findByIdAndUpdate(id, updateData, {
+  // 5) Determine the correct model to use based on user role
+  let UserModel;
+  if (targetUser.role === "general") {
+    UserModel = GeneralUser;
+  } else if (targetUser.role === "admin") {
+    UserModel = AdminUser;
+  } else {
+    UserModel = User; // fallback
+  }
+
+  // 6) Applico l'update usando il modello appropriato
+  const updated = await UserModel.findByIdAndUpdate(id, updateData, {
     new: true,
     runValidators: true,
   })

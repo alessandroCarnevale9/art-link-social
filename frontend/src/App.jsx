@@ -1,3 +1,4 @@
+// src/App.jsx
 import React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuthContext } from "./hooks/useAuthContext";
@@ -6,6 +7,7 @@ import Home from "./pages/Home";
 import PinDetail from "./pages/PinDetail";
 import CreatePin from "./pages/CreatePin";
 import EditPin from "./pages/EditPin";
+import EditProfile from "./pages/EditProfile";
 import FavoritesList from "./pages/FavoritesList";
 import Profile from "./pages/Profile";
 import AdminHome from "./pages/AdminHome";
@@ -24,7 +26,7 @@ const App = () => {
       <Navbar />
       <div className="pages">
         <Routes>
-          {/* Home/AdminHome */}
+          {/* Home or Admin dashboard */}
           <Route
             path="/"
             element={
@@ -40,13 +42,13 @@ const App = () => {
             }
           />
 
-          {/* Dettaglio pin */}
+          {/* Pin detail */}
           <Route
             path="/pin/:pinId"
             element={user ? <PinDetail /> : <Navigate to="/login" />}
           />
 
-          {/* CRUD opere */}
+          {/* Create/Edit Pin */}
           <Route
             path="/create-pin"
             element={user ? <CreatePin /> : <Navigate to="/login" />}
@@ -62,13 +64,19 @@ const App = () => {
             element={user ? <FavoritesList /> : <Navigate to="/login" />}
           />
 
-          {/* Profile */}
+          {/* Edit own profile */}
+          <Route
+            path="/profile/edit"
+            element={user ? <EditProfile /> : <Navigate to="/login" />}
+          />
+
+          {/* View any user's profile */}
           <Route
             path="/profile/:userId"
             element={user ? <Profile /> : <Navigate to="/login" />}
           />
 
-          {/* Autenticazione */}
+          {/* Authentication */}
           <Route
             path="/login"
             element={!user ? <Login /> : <Navigate to="/" />}

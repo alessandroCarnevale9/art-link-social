@@ -17,7 +17,8 @@ function Profile() {
   } = useFetchArtworks({ authorId: profile?._id });
 
   if (loadUser) return <p>Loading profile...</p>;
-  if (errUser) return <p>Error: {errUser.message || errUser}</p>;
+  if (errUser)
+    return <p>Error: {errUser.message || JSON.stringify(errUser)}</p>;
 
   if (!profile) return <p>User not found.</p>;
 
@@ -42,7 +43,7 @@ function Profile() {
       <section>
         <h2>Artworks</h2>
         {loadArts && <p>Loading artworks...</p>}
-        {errArts && <p>Error: {errArts.message || errArts}</p>}
+        {errArts && <p>Error: {errArts.message || JSON.stringify(errArts)}</p>}
         {!loadArts && !errArts && (
           <ul>
             {artworks.map((a) => (
