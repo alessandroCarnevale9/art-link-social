@@ -1,4 +1,11 @@
-import { createContext, useReducer, useEffect, useState } from "react";
+import React, {
+  createContext,
+  useReducer,
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+} from "react";
 
 export const AuthContext = createContext();
 
@@ -13,7 +20,7 @@ export const authReducer = (state, action) => {
   }
 };
 
-// Decodifica il payload del JWT
+// Decode JWT payload
 const parseJwt = (token) => {
   try {
     const [, payload] = token.split(".");
@@ -23,7 +30,7 @@ const parseJwt = (token) => {
   }
 };
 
-// Controlla scadenza token
+// Check token expiration
 const isTokenValid = (token) => {
   if (!token) return false;
   const { exp } = parseJwt(token);
@@ -33,61 +40,82 @@ const isTokenValid = (token) => {
 export const AuthContextProvider = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, { user: null });
   const [loadingAuth, setLoadingAuth] = useState(true);
+  const refreshTimerRef = useRef(null);
 
-  useEffect(() => {
-    // Svuota localStorage e logout in caso di token non valido
-    const handleLogout = () => {
-      localStorage.removeItem("jwt");
+  // effettua refresh via cookie
+  const refreshToken = useCallback(async () => {
+    try {
+      const res = await fetch("/api/auth/refresh", {
+        method: "GET",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Refresh failed");
+      const json = await res.json();
+      localStorage.setItem("jwt", JSON.stringify(json));
+      dispatch({ type: "LOGIN", payload: json });
+      return json;
+    } catch {
       dispatch({ type: "LOGOUT" });
-    };
+      localStorage.removeItem("jwt");
+      return null;
+    }
+  }, []);
 
-    const initializeAuth = async () => {
-      // 1) Provo a prendere il token da localStorage
+  // 1) Carica / refresh al mount
+  useEffect(() => {
+    (async () => {
       const raw = localStorage.getItem("jwt");
       if (raw) {
         try {
           const parsed = JSON.parse(raw);
           if (isTokenValid(parsed.accessToken)) {
             dispatch({ type: "LOGIN", payload: parsed });
-            setLoadingAuth(false);
-            return;
+          } else {
+            await refreshToken();
           }
         } catch {
-          /* JSON malformato */
+          localStorage.removeItem("jwt");
         }
-        localStorage.removeItem("jwt");
+      } else {
+        await refreshToken();
       }
+      setLoadingAuth(false);
+    })();
+  }, [refreshToken]);
 
-      // 2) Se non ho token valido, provo il refresh via cookie
-      try {
-        const res = await fetch("/api/auth/refresh", {
-          method: "GET",
-          credentials: "include",
-        });
-        if (!res.ok) {
-          handleLogout();
-        } else {
-          const json = await res.json();
-          localStorage.setItem("jwt", JSON.stringify(json));
-          dispatch({ type: "LOGIN", payload: json });
-        }
-      } catch {
-        handleLogout();
-      } finally {
-        setLoadingAuth(false);
+  // 2) Schedule NEXT refresh SOLO quando user diventa non-null
+  useEffect(() => {
+    // cancello eventuale timer precedente
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current);
+      refreshTimerRef.current = null;
+    }
+    // se ho un token valido, calcolo scadenza
+    const token = state.user?.accessToken;
+    if (token) {
+      const { exp } = parseJwt(token);
+      const delay = exp * 1000 - Date.now() - 60 * 1000; // 1 min prima
+      if (delay > 0) {
+        refreshTimerRef.current = setTimeout(() => {
+          refreshToken();
+        }, delay);
+      }
+    }
+    // pulisco al logout
+    return () => {
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+        refreshTimerRef.current = null;
       }
     };
+  }, [state.user, refreshToken]);
 
-    initializeAuth();
-  }, [dispatch]);
-
-  // Finché siamo in fase di verifica non mostriamo i figli
   if (loadingAuth) {
     return <p>Loading authentication…</p>;
   }
 
   return (
-    <AuthContext.Provider value={{ ...state, dispatch, loadingAuth }}>
+    <AuthContext.Provider value={{ user: state.user, dispatch, loadingAuth }}>
       {children}
     </AuthContext.Provider>
   );
