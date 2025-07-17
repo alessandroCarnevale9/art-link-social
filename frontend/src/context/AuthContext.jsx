@@ -1,4 +1,4 @@
-import React, {
+import {
   createContext,
   useReducer,
   useEffect,
@@ -61,7 +61,6 @@ export const AuthContextProvider = ({ children }) => {
     }
   }, []);
 
-  // 1) Carica / refresh al mount
   useEffect(() => {
     (async () => {
       const raw = localStorage.getItem("jwt");
@@ -83,9 +82,7 @@ export const AuthContextProvider = ({ children }) => {
     })();
   }, [refreshToken]);
 
-  // 2) Schedule NEXT refresh SOLO quando user diventa non-null
   useEffect(() => {
-    // cancello eventuale timer precedente
     if (refreshTimerRef.current) {
       clearTimeout(refreshTimerRef.current);
       refreshTimerRef.current = null;
@@ -101,7 +98,7 @@ export const AuthContextProvider = ({ children }) => {
         }, delay);
       }
     }
-    // pulisco al logout
+  
     return () => {
       if (refreshTimerRef.current) {
         clearTimeout(refreshTimerRef.current);

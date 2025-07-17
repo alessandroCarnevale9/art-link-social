@@ -1,0 +1,61 @@
+.auth-page {
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+}
+
+.auth-form {
+    flex: 0 0 480px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+    z-index: 2;
+}
+
+.auth-video-container {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+}
+
+.auth-form .login,
+.auth-form .signup {
+    width: 100%;
+    max-width: 100%;
+    height: 100vh;
+    padding: 3rem 2rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    box-shadow: none;
+}
+
+@media (max-width: 768px) {
+    .auth-page {
+        flex-direction: column;
+    }
+
+    .auth-form {
+        flex: 0 0 auto;
+        height: auto;
+    }
+
+    .auth-form .login,
+    .auth-form .signup {
+        height: auto;
+        min-height: 100vh;
+    }
+
+    .auth-video-container {
+        display: none;
+    }
+}
+
+.auth-video-container video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}

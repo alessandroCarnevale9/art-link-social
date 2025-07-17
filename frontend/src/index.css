@@ -1,0 +1,14 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: 0;
+    font-family: sans-serif;
+    box-sizing: border-box;
+}
+
+body {
+  background-color: #f8f8f8;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}

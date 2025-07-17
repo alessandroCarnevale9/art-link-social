@@ -1,4 +1,3 @@
-// src/hooks/useLogout.js
 import { useAuthContext } from "./useAuthContext";
 import { logout as apiLogout } from "../api/auth";
 

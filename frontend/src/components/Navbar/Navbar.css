@@ -1,0 +1,104 @@
+.app-header {
+    width: 100%;
+    background-color: #fff;
+    border-bottom: 1px solid #e0e0e0;
+    padding: 0.5rem 1rem;
+}
+
+.header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.header-inner.guest .nav-auth {
+    display: flex;
+    gap: 1rem;
+}
+
+.nav-auth {
+    margin-left: 10px;
+    margin-right: 50px;
+}
+
+/* NAV LEFT */
+.nav-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.nav-logo img {
+    width: 150px;
+}
+
+.nav-icon {
+    font-size: 1.5rem;
+    color: #333;
+    text-decoration: none;
+}
+
+/* SEARCH BOX */
+.search-box {
+    display: flex;
+    flex: 1;
+    margin: 0 2rem;
+    align-items: center;
+    position: relative;
+}
+
+.search-box input {
+    width: 100%;
+    max-width: 100%;
+    padding: 0.4rem 1.5rem 0.4rem 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    background-color: #E9E9E9;
+}
+
+.search-icon {
+    position: absolute;
+    right: 0.5rem;
+    font-size: 1rem;
+    color: #555;
+}
+
+/* NAV RIGHT */
+.nav-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+/* USER INFO */
+.user-info {
+    margin-left: 10px;
+    margin-right: 50px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.user-email {
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.btn-logout {
+    padding: 0.4rem 0.8rem;
+    border: none;
+    background-color: #ff4d4f;
+    color: #fff;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+/* GUEST AUTH BUTTONS */
+.btn-auth {
+    padding: 0.4rem 0.8rem;
+    text-decoration: none;
+    border: 1px solid #007bff;
+    border-radius: 4px;
+    color: #007bff;
+    font-weight: 500;
+}

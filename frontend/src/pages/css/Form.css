@@ -1,0 +1,236 @@
+.login,
+.signup {
+  width: 100%;
+  padding: 3rem 2rem;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+.login h2,
+.signup h2 {
+  font-size: 2rem;
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+.login-prompt,
+.register-prompt {
+  text-align: center;
+  margin-bottom: 2rem;
+  color: #333;
+}
+
+.link-btn {
+  color: #f04c3f;
+  font-weight: 600;
+  text-decoration: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: inherit;
+}
+
+.link-btn:hover {
+  text-decoration: underline;
+}
+
+/* Campi di input */
+.login label,
+.signup label {
+  display: block;
+  margin-bottom: 1rem;
+  font-weight: 500;
+  color: #444;
+}
+
+.input-group {
+  position: relative;
+  margin-bottom: 1rem;
+}
+
+.input-group .icon {
+  position: absolute;
+  top: 50%;
+  left: 0.75rem;
+  transform: translateY(-50%);
+  color: #999;
+}
+
+.input-group input {
+  width: 100%;
+  max-width: 100%;
+  padding: 0.75rem 0.75rem 0.75rem 2.5rem;
+  border: none;
+  border-bottom: 1px solid #ccc;
+  outline: none;
+  font-size: 1rem;
+  box-sizing: border-box;
+  background: transparent;
+}
+
+.input-group input:focus {
+  border-bottom-color: #f04c3f;
+}
+
+/* Pulsanti */
+.btn-login,
+.btn-signup {
+  width: 100%;
+  padding: 0.75rem;
+  background: #000;
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.btn-login:hover,
+.btn-signup:hover {
+  background: #333;
+}
+
+.btn-login:disabled,
+.btn-signup:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.btn-login {
+  margin-bottom: 2rem;
+}
+
+.btn-signup {
+  margin-top: 2rem;
+}
+
+/* Messaggi di errore */
+.error {
+  margin-top: 1rem;
+  color: #f04c3f;
+  font-size: 0.9rem;
+}
+
+/* Stili specifici per login */
+.options {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 1rem 0 2rem;
+  line-height: 1.5;
+}
+
+.remember-me {
+  display: flex;
+  align-items: flex-start;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.remember-me input {
+  margin: 0;
+  width: 16px;
+  margin-right: 5px;
+}
+
+label.remember-me {
+  margin: 0;
+}
+
+.forgot-link {
+  color: #666;
+  text-decoration: none;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.forgot-link:hover {
+  text-decoration: underline;
+}
+
+/* Divider */
+.divider {
+  text-align: center;
+  color: #aaa;
+  margin-bottom: 1.5rem;
+  position: relative;
+}
+
+.divider span {
+  background: #fff;
+  padding: 0 1rem;
+  position: relative;
+  z-index: 1;
+}
+
+.divider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: #ddd;
+}
+
+/* Pulsanti social */
+.social-login {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.social-btn {
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 50%;
+  border: none;
+  font-size: 2rem;
+  cursor: pointer;
+  background: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease;
+}
+
+.social-btn:hover {
+  transform: translateY(-2px);
+}
+
+.social-btn.fb {
+  color: #1877f2;
+}
+
+.social-btn.apple {
+  color: #000;
+}
+
+.social-btn.google {
+  color: #db4437;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+
+  .login,
+  .signup {
+    padding: 2rem 1.5rem;
+    min-height: auto;
+  }
+
+  .login h2,
+  .signup h2 {
+    font-size: 1.5rem;
+  }
+
+  .social-btn {
+    width: 3rem;
+    height: 3rem;
+    font-size: 1.5rem;
+  }
+}

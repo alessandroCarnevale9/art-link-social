@@ -1,56 +1,91 @@
 import { useState } from "react";
 import { useSignup } from "../hooks/useSignup";
+import { FaEnvelope, FaUser, FaLock } from "react-icons/fa";
+import "./css/Form.css";
 
-const Signup = () => {
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
+export default function Signup({ switchToLogin }) {
   const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("general");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const { signup, errors, isLoading } = useSignup();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    await signup(firstName, lastName, email, password, role);
+    await signup({ email, username, password, confirmPassword });
   };
 
   return (
-    <form className="signup" onSubmit={handleSubmit}>
-      <h3>Sign up</h3>
-
-      <label>Name:</label>
-      <input
-        type="text"
-        onChange={(e) => setFirstName(e.target.value)}
-        value={firstName}
-      />
-
-      <label>Last name:</label>
-      <input
-        type="text"
-        onChange={(e) => setLastName(e.target.value)}
-        value={lastName}
-      />
+    <form className="login" onSubmit={handleSubmit}>
+      <h2>Sign up</h2>
+      <p className="register-prompt">
+        Already have an account?{" "}
+        <button type="button" className="link-btn" onClick={switchToLogin}>
+          Sign in here!
+        </button>
+      </p>
 
       <label>Email:</label>
-      <input
-        type="email"
-        onChange={(e) => setEmail(e.target.value)}
-        value={email}
-      />
+      <div className="input-group">
+        <FaEnvelope className="icon" />
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Enter your email"
+          required
+        />
+      </div>
+
+      <label>Username:</label>
+      <div className="input-group">
+        <FaUser className="icon" />
+        <input
+          type="text"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          placeholder="Choose a username"
+          required
+        />
+      </div>
 
       <label>Password:</label>
-      <input
-        type="password"
-        onChange={(e) => setPassword(e.target.value)}
-        value={password}
-      />
+      <div className="input-group">
+        <FaLock className="icon" />
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Enter your password"
+          required
+        />
+      </div>
 
-      <button disabled={isLoading}>Sign up</button>
-      {errors && <div className="error">{errors}</div>}
+      <label>Confirm Password:</label>
+      <div className="input-group">
+        <FaLock className="icon" />
+        <input
+          type="password"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          placeholder="Confirm your password"
+          required
+        />
+      </div>
+
+      <button type="submit" disabled={isLoading} className="btn-signup">
+        {isLoading ? "Loading..." : "Register"}
+      </button>
+
+      {errors && (
+        <div className="error">
+          {Array.isArray(errors) ? (
+            errors.map((err, i) => <p key={i}>{err}</p>)
+          ) : (
+            <p>{errors}</p>
+          )}
+        </div>
+      )}
     </form>
   );
-};
-
-export default Signup;
+}
