@@ -1,15 +1,16 @@
 import { useEffect, useRef } from "react";
 
-const AuthVideo = ({ videoSrc }) => {
+const AuthVideo = ({ videoSrc, playbackRate = 1.75 }) => {
   const videoRef = useRef(null);
-
+  
   useEffect(() => {
     const video = videoRef.current;
     if (video) {
       video.currentTime = 0;
+      video.playbackRate = playbackRate;
       video.play().catch(console.error);
     }
-  }, []);
+  }, [playbackRate]);
 
   return (
     <>

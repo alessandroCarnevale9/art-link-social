@@ -1,7 +1,10 @@
+import Gallery from "../components/Gallery/Gallery";
+
+
 const Home = () => {
   return (
     <div>
-      <h1>User Home</h1>
+      <Gallery />
     </div>
   );
 };
