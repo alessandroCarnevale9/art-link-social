@@ -96,11 +96,11 @@ export const getMultipleArtworks = async (objectIds, maxConcurrent = 2) => {
         const artwork = await getArtworkDetails(id);
 
         // Skip if artwork not found or missing image
-        if (!artwork || !artwork.primaryImage) return null;
+        if (!artwork || !artwork.primaryImageSmall) return null;
 
         return {
           id: artwork.objectID,
-          src: artwork.primaryImage,
+          src: artwork.primaryImageSmall,
           alt: artwork.title || "Untitled",
           title: artwork.title || "Untitled",
           artist: artwork.artistDisplayName || "Unknown Artist",
@@ -228,10 +228,10 @@ export const getRandomArtwork = async (query = "painting", maxAttempts = 5) => {
       const randomId = objectIds[Math.floor(Math.random() * objectIds.length)];
       const artwork = await getArtworkDetails(randomId);
 
-      if (artwork?.primaryImage) {
+      if (artwork?.primaryImageSmall) {
         return {
           id: artwork.objectID,
-          src: artwork.primaryImage,
+          src: artwork.primaryImageSmall,
           alt: artwork.title || "Untitled",
           title: artwork.title || "Untitled",
           artist: artwork.artistDisplayName || "Unknown Artist",
