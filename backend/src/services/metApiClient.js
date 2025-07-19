@@ -1,11 +1,10 @@
-require("dotenv").config();
 const fetch = require("node-fetch");
 
 class MetApiClient {
   constructor({
-    requestDelay = 3000,
+    requestDelay = 1000,
     maxRetries = 3,
-    retryBaseDelay = 5000,
+    retryBaseDelay = 8000,
   } = {}) {
     this.REQUEST_DELAY = requestDelay;
     this.MAX_RETRIES = maxRetries;
@@ -143,7 +142,7 @@ class MetApiClient {
 }
 
 module.exports = new MetApiClient({
-  requestDelay: 3000,
+  requestDelay: 1000,
   maxRetries: 3,
-  retryBaseDelay: 5000,
+  retryBaseDelay: 8000,
 });

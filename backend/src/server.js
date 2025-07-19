@@ -6,8 +6,6 @@ const { logger } = require("./middleware/logger");
 const errorHandler = require("./middleware/errorHandler");
 const Database = require("./config/database");
 
-const metClient = require("./services/metApiClient");
-
 const app = express();
 const PORT = process.env.PORT || 4000;
 
@@ -30,43 +28,7 @@ app.get("/server-status", (req, res) => {
 });
 
 // MET Museum endpoints
-app.get("/api/search", async (req, res, next) => {
-  const { q, hasImages = true } = req.query;
-  if (!q || !q.trim()) return res.status(400).json({ error: "Query mancante" });
-
-  try {
-    const result = await metClient.search(q, hasImages);
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
-});
-
-app.get("/api/objects/:id", async (req, res, next) => {
-  const { id } = req.params;
-  if (!/^\d+$/.test(id))
-    return res.status(400).json({ error: "ID non valido" });
-
-  try {
-    const result = await metClient.getObjectById(id);
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
-});
-
-app.get("/api/objects", async (req, res, next) => {
-  const { departmentIds } = req.query;
-  if (!departmentIds)
-    return res.status(400).json({ error: "DepartmentId mancante" });
-
-  try {
-    const result = await metClient.listByDepartment(departmentIds);
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
-});
+app.use("/api/met", require("./routes/metRoutes"));
 
 // Other routes
 app.use("/api/auth", require("./routes/authRoutes"));
