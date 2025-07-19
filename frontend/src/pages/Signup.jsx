@@ -4,15 +4,15 @@ import { FaEnvelope, FaUser, FaLock } from "react-icons/fa";
 import "./css/Form.css";
 
 export default function Signup({ switchToLogin }) {
+  const [name, setName] = useState("");
+  const [surname, setSurname] = useState("");
   const [email, setEmail] = useState("");
-  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const { signup, errors, isLoading } = useSignup();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await signup({ email, username, password, confirmPassword });
+    await signup(name, surname, email, password);
   };
 
   return (
@@ -24,6 +24,30 @@ export default function Signup({ switchToLogin }) {
           Sign in here!
         </button>
       </p>
+
+      <label>Name:</label>
+      <div className="input-group">
+        <FaUser className="icon" />
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Type your name"
+          required
+        />
+      </div>
+
+      <label>Surname:</label>
+      <div className="input-group">
+        <FaUser className="icon" />
+        <input
+          type="text"
+          value={surname}
+          onChange={(e) => setSurname(e.target.value)}
+          placeholder="Type your surname"
+          required
+        />
+      </div>
 
       <label>Email:</label>
       <div className="input-group">
@@ -37,18 +61,6 @@ export default function Signup({ switchToLogin }) {
         />
       </div>
 
-      <label>Username:</label>
-      <div className="input-group">
-        <FaUser className="icon" />
-        <input
-          type="text"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          placeholder="Choose a username"
-          required
-        />
-      </div>
-
       <label>Password:</label>
       <div className="input-group">
         <FaLock className="icon" />
@@ -57,18 +69,6 @@ export default function Signup({ switchToLogin }) {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="Enter your password"
-          required
-        />
-      </div>
-
-      <label>Confirm Password:</label>
-      <div className="input-group">
-        <FaLock className="icon" />
-        <input
-          type="password"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          placeholder="Confirm your password"
           required
         />
       </div>
