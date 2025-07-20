@@ -5,7 +5,7 @@ import {
   searchArtworks,
   getMultipleArtworksProgressive,
   POPULAR_QUERIES,
-} from "../../../services/met_api";
+} from "../../api/metApiReq";
 
 const Gallery = () => {
   const [likedImages, setLikedImages] = useState(new Set());
