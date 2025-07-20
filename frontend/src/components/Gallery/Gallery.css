@@ -288,3 +288,46 @@ body {
         padding: 2rem 1rem;
     }
 }
+
+/* Placeholder card styles */
+.placeholder-card {
+    background-color: #f0f0f0;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    aspect-ratio: 3/4;
+    animation: pulse 1.5s infinite;
+    break-inside: avoid;
+}
+
+@keyframes pulse {
+    0% {
+        background-color: #f0f0f0;
+    }
+
+    50% {
+        background-color: #e0e0e0;
+    }
+
+    100% {
+        background-color: #f0f0f0;
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+    .placeholder-card {
+        aspect-ratio: 3/4;
+    }
+}
+
+@media (max-width: 900px) {
+    .placeholder-card {
+        aspect-ratio: 3/4;
+    }
+}
+
+@media (max-width: 600px) {
+    .placeholder-card {
+        aspect-ratio: 3/4;
+    }
+}

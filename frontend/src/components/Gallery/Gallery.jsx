@@ -24,6 +24,11 @@ const Gallery = () => {
   const [currentBatch, setCurrentBatch] = useState(0);
   const [totalBatches, setTotalBatches] = useState(0);
 
+  // Stati per i placeholder
+  const [placeholderCount, setPlaceholderCount] = useState(0);
+  const [occupiedPlaceholders, setOccupiedPlaceholders] = useState([]);
+  const nextPlaceholderIndex = useRef(0);
+
   // Ref per cancellare richieste in corso
   const currentRequestRef = useRef(null);
   // Ref per salvare gli objectIds della ricerca corrente
@@ -39,6 +44,15 @@ const Gallery = () => {
     setCurrentBatch(batchNumber);
 
     if (batch && batch.length > 0) {
+      // Occupy placeholders in order
+      const newOccupations = batch.map((img, i) => ({
+        id: img.id,
+        placeholderIndex: nextPlaceholderIndex.current + i,
+      }));
+
+      setOccupiedPlaceholders((prev) => [...prev, ...newOccupations]);
+      nextPlaceholderIndex.current += batch.length;
+
       setImages((prevImages) => {
         const existingIds = new Set(prevImages.map((img) => img.id));
         const newImages = batch.filter((img) => !existingIds.has(img.id));
@@ -71,6 +85,11 @@ const Gallery = () => {
         let objectIds;
 
         if (reset) {
+          // Reset placeholders
+          setPlaceholderCount(limit);
+          setOccupiedPlaceholders([]);
+          nextPlaceholderIndex.current = 0;
+
           setLoading(true);
           setError(null);
           setImages([]);
@@ -120,6 +139,13 @@ const Gallery = () => {
 
         console.log(`Loading ${paginatedIds.length} artworks progressively...`);
 
+        if (paginatedIds.length > 0) {
+          // Initialize placeholders for this batch
+          setPlaceholderCount(paginatedIds.length);
+          setOccupiedPlaceholders([]);
+          nextPlaceholderIndex.current = 0;
+        }
+
         await getMultipleArtworksProgressive(
           paginatedIds,
           (progressData) => {
@@ -152,6 +178,9 @@ const Gallery = () => {
           setLoadingMore(false);
           setProgressiveLoading(false);
           setLoadingProgress(0);
+
+          // Clear remaining placeholders when loading completes
+          setPlaceholderCount(0);
         }
         if (currentRequestRef.current === requestRef) {
           currentRequestRef.current = null;
@@ -241,14 +270,6 @@ const Gallery = () => {
         </div>
       </header>
 
-      {/* initial loading, error, gallery grid, load more, no results, end message */}
-      {loading && images.length === 0 && (
-        <div className="loading-container">
-          <div className="loading-spinner" />
-          <p>Searching artworks from the Metropolitan Museum...</p>
-        </div>
-      )}
-
       {error && (
         <div className="error-container">
           <div className="error-message">
@@ -261,9 +282,10 @@ const Gallery = () => {
         </div>
       )}
 
-      {images.length > 0 && (
+      {(images.length > 0 || placeholderCount > 0) && (
         <div className="gallery-content">
           <div className="grid">
+            {/* Render actual images */}
             {images.map((image, index) => (
               <Card
                 key={image.id}
@@ -273,7 +295,24 @@ const Gallery = () => {
                 className={`card-appear card-delay-${index % 6}`}
               />
             ))}
+
+            {/* Render placeholders */}
+            {Array.from({ length: placeholderCount }).map((_, index) => {
+              // Check if this placeholder is occupied
+              const isOccupied = occupiedPlaceholders.some(
+                (item) => item.placeholderIndex === index
+              );
+
+              // Only render if not occupied
+              return !isOccupied ? (
+                <div
+                  key={`placeholder-${index}`}
+                  className="placeholder-card"
+                />
+              ) : null;
+            })}
           </div>
+
           {progressiveLoading && (
             <div className="progressive-loading-indicator">
               <div className="loading-dots">
@@ -287,12 +326,15 @@ const Gallery = () => {
         </div>
       )}
 
-      {!loading && !progressiveLoading && images.length === 0 && (
-        <div className="no-results">
-          <h3>No artworks found</h3>
-          <p>Try searching for a different category</p>
-        </div>
-      )}
+      {!loading &&
+        !progressiveLoading &&
+        images.length === 0 &&
+        placeholderCount === 0 && (
+          <div className="no-results">
+            <h3>No artworks found</h3>
+            <p>Try searching for a different category</p>
+          </div>
+        )}
 
       {!loading && images.length > 0 && hasMore && !progressiveLoading && (
         <div className="load-more-container">
