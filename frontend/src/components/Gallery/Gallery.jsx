@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import "./Gallery.css";
 import Card from "../Card/Card";
 import {
-  searchAndGetArtworks,
+  searchArtworks,
+  getMultipleArtworksProgressive,
   POPULAR_QUERIES,
 } from "../../../services/met_api";
 
@@ -17,88 +18,190 @@ const Gallery = () => {
   const [totalResults, setTotalResults] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  // Funzione per caricare le opere d'arte
-  const loadArtworks = useCallback(
-    async (query, reset = false) => {
+  // Stati per caricamento progressivo
+  const [progressiveLoading, setProgressiveLoading] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [currentBatch, setCurrentBatch] = useState(0);
+  const [totalBatches, setTotalBatches] = useState(0);
+
+  // Ref per cancellare richieste in corso
+  const currentRequestRef = useRef(null);
+  // Ref per salvare gli objectIds della ricerca corrente
+  const currentSearchResultsRef = useRef([]);
+
+  // Callback per il progresso del caricamento
+  const handleProgress = useCallback((progressData) => {
+    const { totalBatches, batchNumber, batch, progress, resultCount } =
+      progressData;
+
+    setLoadingProgress(Math.round(progress * 100));
+    setTotalBatches(totalBatches);
+    setCurrentBatch(batchNumber);
+
+    if (batch && batch.length > 0) {
+      setImages((prevImages) => {
+        const existingIds = new Set(prevImages.map((img) => img.id));
+        const newImages = batch.filter((img) => !existingIds.has(img.id));
+        return [...prevImages, ...newImages];
+      });
+    }
+
+    console.log(
+      `Progress: ${Math.round(
+        progress * 100
+      )}% - Batch ${batchNumber}/${totalBatches} - Results: ${resultCount}`
+    );
+  }, []);
+
+  // Funzione per caricare le opere d'arte con caricamento progressivo
+  const loadArtworksProgressive = useCallback(
+    async (query, reset = false, limit = 20) => {
+      // requestRef visibile in try/catch/finally
+      let requestRef = { cancelled: false };
+
+      // Cancella richiesta precedente se esiste
+      if (currentRequestRef.current) {
+        currentRequestRef.current.cancelled = true;
+        console.log("Cancelling previous request");
+      }
+      currentRequestRef.current = requestRef;
+
       try {
-        const currentOffset = reset ? 0 : offset;
+        let currentOffset;
+        let objectIds;
 
         if (reset) {
           setLoading(true);
           setError(null);
           setImages([]);
+          setProgressiveLoading(true);
+          setLoadingProgress(0);
+          setCurrentBatch(0);
+          setTotalBatches(0);
+          setOffset(0);
+          currentOffset = 0;
+
+          console.log(`Searching for: "${query}"`);
+          objectIds = await searchArtworks(query);
+          currentSearchResultsRef.current = objectIds || [];
         } else {
           setLoadingMore(true);
+          setProgressiveLoading(true);
+          currentOffset = offset;
+          objectIds = currentSearchResultsRef.current;
         }
 
-        const result = await searchAndGetArtworks(query, 20, currentOffset);
+        if (requestRef.cancelled) {
+          console.log("Request was cancelled after search");
+          return;
+        }
+
+        if (!objectIds || objectIds.length === 0) {
+          if (reset) {
+            setImages([]);
+            setTotalResults(0);
+            setHasMore(false);
+          }
+          setProgressiveLoading(false);
+          setLoadingProgress(0);
+          return;
+        }
+
+        const paginatedIds = objectIds.slice(
+          currentOffset,
+          currentOffset + limit
+        );
 
         if (reset) {
-          setImages(result.artworks);
-        } else {
-          setImages((prev) => [...prev, ...result.artworks]);
+          setTotalResults(objectIds.length);
         }
 
-        setHasMore(result.hasMore);
-        setTotalResults(result.total);
-        setOffset(result.nextOffset || currentOffset + 20);
+        setHasMore(currentOffset + limit < objectIds.length);
+
+        console.log(`Loading ${paginatedIds.length} artworks progressively...`);
+
+        await getMultipleArtworksProgressive(
+          paginatedIds,
+          (progressData) => {
+            if (requestRef.cancelled) {
+              console.log("Request was cancelled during progress");
+              return;
+            }
+            handleProgress(progressData);
+          },
+          { batchSize: 3, priority: "normal" }
+        );
+
+        if (requestRef.cancelled) {
+          console.log("Request was cancelled after completion");
+          return;
+        }
+
+        setOffset(currentOffset + limit);
+        console.log(
+          `Progressive loading completed: loaded ${paginatedIds.length} IDs`
+        );
       } catch (err) {
-        console.error("Error loading artworks:", err);
-        setError(err.message || "Failed to load artworks");
+        if (!requestRef.cancelled) {
+          console.error("Error loading artworks:", err);
+          setError(err.message || "Failed to load artworks");
+        }
       } finally {
-        setLoading(false);
-        setLoadingMore(false);
+        if (!requestRef.cancelled) {
+          setLoading(false);
+          setLoadingMore(false);
+          setProgressiveLoading(false);
+          setLoadingProgress(0);
+        }
+        if (currentRequestRef.current === requestRef) {
+          currentRequestRef.current = null;
+        }
       }
     },
-    [offset]
+    [offset, handleProgress]
   );
 
   // Carica le opere iniziali
   useEffect(() => {
-    loadArtworks(currentQuery, true);
+    loadArtworksProgressive(currentQuery, true);
+    return () => {
+      if (currentRequestRef.current) {
+        currentRequestRef.current.cancelled = true;
+      }
+    };
   }, [currentQuery]);
 
-  // Gestisce il cambio di categoria
   const handleCategoryChange = (newQuery) => {
+    if (newQuery === currentQuery) return;
     setCurrentQuery(newQuery);
-    setOffset(0);
   };
 
-  // Gestisce il caricamento di più immagini
   const loadMore = () => {
-    if (!loadingMore && hasMore) {
-      loadArtworks(currentQuery, false);
+    if (!loadingMore && !progressiveLoading && hasMore) {
+      loadArtworksProgressive(currentQuery, false);
     }
   };
 
-  // Gestisce il like delle immagini
   const handleLike = (imageId) => {
     setLikedImages((prev) => {
       const newLiked = new Set(prev);
-      if (newLiked.has(imageId)) {
-        newLiked.delete(imageId);
-      } else {
-        newLiked.add(imageId);
-      }
+      if (newLiked.has(imageId)) newLiked.delete(imageId);
+      else newLiked.add(imageId);
       return newLiked;
     });
   };
 
-  // Funzione per riprovare in caso di errore
   const retry = () => {
     setError(null);
-    loadArtworks(currentQuery, true);
+    loadArtworksProgressive(currentQuery, true);
   };
 
   return (
     <div className="gallery-container">
-      {/* Header con filtri */}
       <header className="gallery-header">
         <div className="header-content">
           <h1>Metropolitan Museum Gallery</h1>
           <p>Discover amazing artworks from the MET collection</p>
-
-          {/* Filtri per categoria */}
           <div className="category-filters">
             {POPULAR_QUERIES.map((query) => (
               <button
@@ -107,33 +210,45 @@ const Gallery = () => {
                   currentQuery === query ? "active" : ""
                 }`}
                 onClick={() => handleCategoryChange(query)}
-                disabled={loading}
+                disabled={loading || progressiveLoading}
               >
                 {query.charAt(0).toUpperCase() + query.slice(1)}
               </button>
             ))}
           </div>
-
-          {/* Informazioni sui risultati */}
           {totalResults > 0 && (
             <div className="results-info">
               <span>
                 Showing {images.length} of {totalResults} artworks
               </span>
+              {progressiveLoading && (
+                <div className="progress-container">
+                  <div className="progress-bar">
+                    <div
+                      className="progress-fill"
+                      style={{ width: `${loadingProgress}%` }}
+                    />
+                  </div>
+                  <span className="progress-text">
+                    {totalBatches > 0
+                      ? `Loading batch ${currentBatch} of ${totalBatches} (${loadingProgress}%)`
+                      : `Loading... (${loadingProgress}%)`}
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </div>
       </header>
 
-      {/* Stato di caricamento iniziale */}
-      {loading && (
+      {/* initial loading, error, gallery grid, load more, no results, end message */}
+      {loading && images.length === 0 && (
         <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <p>Loading artworks from the Metropolitan Museum...</p>
+          <div className="loading-spinner" />
+          <p>Searching artworks from the Metropolitan Museum...</p>
         </div>
       )}
 
-      {/* Stato di errore */}
       {error && (
         <div className="error-container">
           <div className="error-message">
@@ -146,40 +261,49 @@ const Gallery = () => {
         </div>
       )}
 
-      {/* Grid delle immagini */}
-      {!loading && !error && images.length > 0 && (
-        <div className="grid">
-          {images.map((image) => (
-            <Card
-              key={image.id}
-              image={image}
-              isLiked={likedImages.has(image.id)}
-              onLike={handleLike}
-            />
-          ))}
+      {images.length > 0 && (
+        <div className="gallery-content">
+          <div className="grid">
+            {images.map((image, index) => (
+              <Card
+                key={image.id}
+                image={image}
+                isLiked={likedImages.has(image.id)}
+                onLike={handleLike}
+                className={`card-appear card-delay-${index % 6}`}
+              />
+            ))}
+          </div>
+          {progressiveLoading && (
+            <div className="progressive-loading-indicator">
+              <div className="loading-dots">
+                <div className="loading-dot" />
+                <div className="loading-dot" />
+                <div className="loading-dot" />
+              </div>
+              <p>Loading more artworks...</p>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Messaggio se non ci sono risultati */}
-      {!loading && !error && images.length === 0 && (
+      {!loading && !progressiveLoading && images.length === 0 && (
         <div className="no-results">
           <h3>No artworks found</h3>
           <p>Try searching for a different category</p>
         </div>
       )}
 
-      {/* Pulsante "Load More" */}
-      {!loading && !error && images.length > 0 && hasMore && (
+      {!loading && images.length > 0 && hasMore && !progressiveLoading && (
         <div className="load-more-container">
           <button
             onClick={loadMore}
-            disabled={loadingMore}
+            disabled={loadingMore || progressiveLoading}
             className="load-more-btn"
           >
             {loadingMore ? (
               <>
-                <div className="small-spinner"></div>
-                Loading more...
+                <div className="small-spinner" /> Loading more...
               </>
             ) : (
               "Load More Artworks"
@@ -188,8 +312,7 @@ const Gallery = () => {
         </div>
       )}
 
-      {/* Messaggio fine risultati */}
-      {!loading && !error && images.length > 0 && !hasMore && (
+      {!loading && !progressiveLoading && images.length > 0 && !hasMore && (
         <div className="end-message">
           <p>You've seen all artworks for "{currentQuery}"</p>
         </div>
