@@ -3,7 +3,7 @@ const router = express.Router();
 
 const metClient = require("../services/metApiClient");
 
-router.get("/search", async (req, res, next) => {
+router.get("/search", async (req, res) => {
   const { q, hasImages = true } = req.query;
   if (!q || !q.trim()) return res.status(400).json({ error: "Query mancante" });
 
@@ -13,7 +13,7 @@ router.get("/search", async (req, res, next) => {
   } catch (err) {}
 });
 
-router.get("/objects/:id", async (req, res, next) => {
+router.get("/objects/:id", async (req, res) => {
   const { id } = req.params;
   if (!/^\d+$/.test(id))
     return res.status(400).json({ error: "ID non valido" });
@@ -24,7 +24,7 @@ router.get("/objects/:id", async (req, res, next) => {
   } catch (err) {}
 });
 
-router.get("/objects", async (req, res, next) => {
+router.get("/objects", async (req, res) => {
   const { departmentIds } = req.query;
   if (!departmentIds)
     return res.status(400).json({ error: "DepartmentId mancante" });
