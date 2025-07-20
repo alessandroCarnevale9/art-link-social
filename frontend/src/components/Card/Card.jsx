@@ -2,11 +2,11 @@ import { FaHeart, FaRegHeart, FaInfoCircle } from "react-icons/fa";
 import { useState } from "react";
 import "./Card.css";
 
-const Card = ({ image, isLiked, onLike }) => {
+const Card = ({ image, isLiked, onLike, className = "" }) => {
   const [showInfo, setShowInfo] = useState(false);
 
   return (
-    <div className="card">
+    <div className={`card ${className}`}>
       <div className="image-container">
         <img src={image.src} alt={image.alt} loading="lazy" />
         <div className="overlay">
@@ -16,17 +16,18 @@ const Card = ({ image, isLiked, onLike }) => {
               onClick={() => onLike(image.id)}
               title={isLiked ? "Remove from favorites" : "Add to favorites"}
             >
-              {isLiked ? (
-                <FaHeart className="heart-icon filled" />
-              ) : (
-                <FaRegHeart className="heart-icon" />
-              )}
+              {isLiked ? <FaHeart className="heart-icon filled" /> : <FaRegHeart className="heart-icon" />}
             </button>
-
             {(image.artist || image.date || image.culture) && (
               <button
                 className="info-button"
-                onClick={() => setShowInfo(!showInfo)}
+                onClick={() => {
+                  setShowInfo((v) => !v);
+                  // opzionale: ricalcolo masonry dopo espansione
+                  setTimeout(() => {
+                    window.dispatchEvent(new Event("resize"));
+                  }, 0);
+                }}
                 title="Show artwork details"
               >
                 <FaInfoCircle className="info-icon" />
@@ -38,13 +39,8 @@ const Card = ({ image, isLiked, onLike }) => {
 
       <div className="card-info">
         <h3>{image.title}</h3>
-
-        {/* Informazioni base sempre visibili */}
         {image.artist && <p className="artist-name">{image.artist}</p>}
-
         {image.date && <p className="artwork-date">{image.date}</p>}
-
-        {/* Informazioni aggiuntive espandibili */}
         {showInfo && (
           <div className="expanded-info">
             {image.culture && (
