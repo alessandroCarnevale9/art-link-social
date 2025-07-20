@@ -7,8 +7,8 @@ import {
   POPULAR_QUERIES,
 } from "../../api/metApiReq";
 
-const ROW_HEIGHT_PX = 8;   // deve combaciare con grid-auto-rows
-const GRID_GAP_PX = 20;    // deve combaciare con gap della griglia
+const ROW_HEIGHT_PX = 8;
+const GRID_GAP_PX = 20;
 
 const Gallery = () => {
   const [likedImages, setLikedImages] = useState(new Set());
@@ -247,6 +247,11 @@ const Gallery = () => {
     });
   };
 
+  const handleReport = (imageID) => {
+    // TO DO
+    console.log(`Handle report for ${imageID}`);
+  };
+
   const retry = () => {
     setError(null);
     loadArtworksProgressive(currentQuery, true);
@@ -316,6 +321,7 @@ const Gallery = () => {
                 image={image}
                 isLiked={likedImages.has(image.id)}
                 onLike={handleLike}
+                onReport={handleReport}
                 className="grid-item"
               />
             ))}
