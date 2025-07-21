@@ -2,19 +2,19 @@
 import { FaHeart, FaRegHeart, FaFlag } from "react-icons/fa";
 import "./Card.css";
 
-const Card = ({ image, isLiked, onLike, onReport, className = "" }) => {
+const Card = ({ image, isLiked, onLike, /* onReport, */ className = "" }) => {
   return (
     <div className={`card ${className}`}>
       <div className="image-container">
         <img src={image.src} alt={image.alt} loading="lazy" />
 
-        <button
+        {/* <button
           className="report-button-fixed"
           onClick={() => onReport(image.id)}
           title="Report this content"
         >
           <FaFlag className="report-icon" />
-        </button>
+        </button> */}
 
         <div className="overlay">
           <button

@@ -1,5 +1,4 @@
-// src/components/Gallery/Gallery.jsx
-import React, {
+import {
   useState,
   useEffect,
   useCallback,
@@ -17,7 +16,7 @@ import {
 } from "../../api/metApiReq";
 import { importMetArtwork } from "../../api/localApiReq";
 import { addFavorite, removeFavorite } from "../../api/favorites";
-import { createReport } from "../../api/reports";
+// import { createReport } from "../../api/reports";
 
 import { AuthContext } from "../../context/AuthContext";
 
@@ -233,22 +232,22 @@ const Gallery = () => {
     }
   };
 
-  // Report invariato
-  const handleReport = async (externalId) => {
-    try {
-      const { artwork } = await importMetArtwork(externalId);
-      await createReport({
-        targetType: "Artwork",
-        targetId: artwork._id,
-        reasonType: "other",
-        otherReason: "Reported from gallery",
-      });
-      alert("Report sent!");
-    } catch (err) {
-      console.error(err);
-      alert("Could not send report.");
-    }
-  };
+  // // Report invariato
+  // const handleReport = async (externalId) => {
+  //   try {
+  //     const { artwork } = await importMetArtwork(externalId);
+  //     await createReport({
+  //       targetType: "Artwork",
+  //       targetId: artwork._id,
+  //       reasonType: "other",
+  //       otherReason: "Reported from gallery",
+  //     });
+  //     alert("Report sent!");
+  //   } catch (err) {
+  //     console.error(err);
+  //     alert("Could not send report.");
+  //   }
+  // };
 
   return (
     <div className="gallery-container">
@@ -313,7 +312,7 @@ const Gallery = () => {
                 image={img}
                 isLiked={favorites.has(img.id)}
                 onLike={handleLike}
-                onReport={handleReport}
+                /* onReport={handleReport} */
                 className="grid-item"
               />
             ))}
