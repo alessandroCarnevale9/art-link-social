@@ -6,8 +6,9 @@ import React, {
   useCallback,
   useRef,
 } from "react";
-import { getMyFavorites } from "../api/favorites"; // ← importa l’endpoint
+import { getMyFavorites } from "../api/favorites";
 
+// Context e reducer per autenticazione e preferiti
 export const AuthContext = createContext();
 
 const initialState = {
@@ -28,7 +29,7 @@ export const authReducer = (state, action) => {
   }
 };
 
-// funzione di parsing del JWT
+// Parsing del payload JWT
 const parseJwt = (token) => {
   try {
     const [, payload] = token.split(".");
@@ -38,7 +39,7 @@ const parseJwt = (token) => {
   }
 };
 
-// verifica scadenza token
+// Controlla validità del token
 const isTokenValid = (token) => {
   if (!token) return false;
   const { exp } = parseJwt(token);
@@ -50,7 +51,7 @@ export const AuthContextProvider = ({ children }) => {
   const [loadingAuth, setLoadingAuth] = useState(true);
   const refreshTimerRef = useRef(null);
 
-  // refresh del token via cookie
+  // Funzione per refresh del token via cookie
   const refreshToken = useCallback(async () => {
     try {
       const res = await fetch("/api/auth/refresh", {
@@ -69,7 +70,7 @@ export const AuthContextProvider = ({ children }) => {
     }
   }, []);
 
-  // all’avvio: login/refresh + caricamento favorites
+  // Al montaggio: ripristina login o refresh token
   useEffect(() => {
     (async () => {
       let jwt = null;
@@ -89,22 +90,25 @@ export const AuthContextProvider = ({ children }) => {
       } else {
         jwt = await refreshToken();
       }
-
-      if (jwt) {
-        try {
-          const favs = await getMyFavorites();
-          const favSet = new Set(favs.map((a) => a.externalId || a._id));
-          dispatch({ type: "SET_FAVORITES", payload: favSet });
-        } catch (err) {
-          console.error("Failed to load favorites:", err);
-        }
-      }
-
       setLoadingAuth(false);
     })();
   }, [refreshToken]);
 
-  // pianifica refresh automatico un minuto prima della scadenza
+  // Carica i preferiti ogni volta che l'utente effettua il login
+  useEffect(() => {
+    if (!state.user) return;
+    (async () => {
+      try {
+        const favs = await getMyFavorites();
+        const favSet = new Set(favs.map((a) => a.externalId || a._id));
+        dispatch({ type: "SET_FAVORITES", payload: favSet });
+      } catch (err) {
+        console.error("Failed to load favorites after login:", err);
+      }
+    })();
+  }, [state.user]);
+
+  // Pianifica refresh automatico un minuto prima della scadenza
   useEffect(() => {
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
     const token = state.user?.accessToken;

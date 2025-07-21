@@ -12,6 +12,9 @@ async function apiFetch(
     token = JSON.parse(raw)?.accessToken;
   } catch {}
 
+  console.log(`CALLED ${url}`);
+  
+
   const res = await fetch(url, {
     method,
     credentials: "include",

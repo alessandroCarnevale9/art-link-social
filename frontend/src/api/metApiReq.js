@@ -303,7 +303,7 @@ export const getMultipleArtworks = async (objectIds, options = {}) => {
 
       // Pausa più lunga in caso di errore 429
       if (error.message.includes("429")) {
-        await new Promise((resolve) => setTimeout(resolve, 5000));
+        await new Promise((resolve) => setTimeout(resolve, 15000));
       }
     }
   }

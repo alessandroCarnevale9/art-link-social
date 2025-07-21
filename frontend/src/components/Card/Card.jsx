@@ -1,5 +1,4 @@
-// src/components/Card/Card.jsx
-import { FaHeart, FaRegHeart, FaFlag } from "react-icons/fa";
+import { FaHeart, FaRegHeart } from "react-icons/fa";
 import "./Card.css";
 
 const Card = ({ image, isLiked, onLike, /* onReport, */ className = "" }) => {
