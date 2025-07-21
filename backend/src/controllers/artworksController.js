@@ -64,13 +64,22 @@ const getAllArtworks = asyncHandler(async (req, res) => {
  * – Public – Detail: metadata, author, artist, categories, commentsCount, favoritesCount
  */
 const getArtworkById = asyncHandler(async (req, res) => {
-  const artId = new mongoose.Types.ObjectId(req.params.id);
+  const { id } = req.params;
+  let matchCondition;
+
+  // If id is a 24-char hex string, treat as ObjectId
+  if (mongoose.Types.ObjectId.isValid(id) && id.length === 24) {
+    matchCondition = { _id: new mongoose.Types.ObjectId(id) };
+  }
+  // Else if id is numeric, treat as externalId
+  else if (!isNaN(parseInt(id, 10))) {
+    matchCondition = { externalId: parseInt(id, 10) };
+  } else {
+    throw new ApiError(400, "Invalid artwork identifier.");
+  }
 
   const pipeline = [
-    // 1) Seleziona l'opera
-    { $match: { _id: artId } },
-
-    // 2) Popola l'autore (inline)
+    { $match: matchCondition },
     {
       $lookup: {
         from: "users",
@@ -80,18 +89,10 @@ const getArtworkById = asyncHandler(async (req, res) => {
       },
     },
     { $unwind: "$author" },
-
-    // 3) Popola l'artista e le categorie (helper)
     ...lookupArtist(),
     ...lookupCategories(),
-
-    // 4) Aggiungi contatore commenti e rimuovi l'array
     ...addCommentsCount(),
-
-    // 5) Aggiungi contatore favorites e rimuovi l'array
     ...addFavoriteCount(),
-
-    // 6) Proietta i campi temporanei e nascondi hash, role, isActive, __v di author
     {
       $project: {
         comments: 0,
@@ -105,9 +106,7 @@ const getArtworkById = asyncHandler(async (req, res) => {
   ];
 
   const [result] = await Artwork.aggregate(pipeline);
-  if (!result) {
-    throw new ApiError(404, "Artwork not found.");
-  }
+  if (!result) throw new ApiError(404, "Artwork not found.");
 
   res.json(result);
 });
@@ -141,7 +140,6 @@ const createArtwork = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Title is required.");
   }
 
-  // Determino authorId e origin in base al ruolo
   let authorId;
   let origin;
   if (meRole === "general") {
@@ -149,7 +147,6 @@ const createArtwork = asyncHandler(async (req, res) => {
     origin = "UserUploaded";
   } else if (meRole === "admin") {
     authorId = bodyAuthorId || meId;
-    // Se bodyOrigin è uno dei due valori consentiti, lo uso, altrimenti default
     origin = ["AdminUploaded", "UserUploaded"].includes(bodyOrigin)
       ? bodyOrigin
       : "AdminUploaded";
@@ -157,7 +154,6 @@ const createArtwork = asyncHandler(async (req, res) => {
     throw new ApiError(403, "Forbidden");
   }
 
-  // Validazione categorie (se presenti)
   if (categories?.length) {
     const valid = await Category.countDocuments({ _id: { $in: categories } });
     if (valid !== categories.length) {
@@ -205,7 +201,7 @@ const updateArtwork = asyncHandler(async (req, res) => {
   }
 
   const update = {};
-  for (const field of [
+  [
     "title",
     "publishDate",
     "artworkPeriod",
@@ -217,9 +213,9 @@ const updateArtwork = asyncHandler(async (req, res) => {
     "artistId",
     "tags",
     "description",
-  ]) {
+  ].forEach((field) => {
     if (req.body[field] !== undefined) update[field] = req.body[field];
-  }
+  });
   if (req.body.categories) {
     const cats = req.body.categories;
     const valid = await Category.countDocuments({ _id: { $in: cats } });

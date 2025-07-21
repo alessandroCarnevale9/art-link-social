@@ -4,6 +4,7 @@ import Navbar from "./components/Navbar/Navbar";
 import Home from "./pages/Home";
 import AdminHome from "./pages/AdminHome";
 import AuthPage from "./pages/AuthPage";
+import ImageDetail from "./components/ImageDetail/ImageDetail";
 
 const App = () => {
   const { user, loadingAuth } = useAuthContext();
@@ -15,7 +16,6 @@ const App = () => {
   return (
     <BrowserRouter>
       <Navbar />
-
       <div className="pages">
         <Routes>
           {/* Rotta protetta: home o admin */}
@@ -32,6 +32,12 @@ const App = () => {
                 <Navigate to="/login" replace />
               )
             }
+          />
+
+          {/* Rotta protetta: dettaglio immagine */}
+          <Route
+            path="/image/:id"
+            element={user ? <ImageDetail /> : <Navigate to="/login" replace />}
           />
 
           {/* Login e Signup gestiti da AuthPage */}

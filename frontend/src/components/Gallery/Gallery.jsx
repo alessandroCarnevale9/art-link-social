@@ -26,6 +26,8 @@ const GRID_GAP_PX = 20;
 const Gallery = () => {
   const { favorites, dispatch } = useContext(AuthContext);
 
+  console.log("gallery fav", favorites)
+
   // Stati
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(true);
