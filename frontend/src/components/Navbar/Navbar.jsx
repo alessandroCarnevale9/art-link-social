@@ -1,9 +1,9 @@
 import "./Navbar.css";
 import logo from "../../assets/logo.png";
-import { IoHomeOutline } from 'react-icons/io5';
-import { MdOutlineExplore } from 'react-icons/md';
-import { BsPencilFill } from 'react-icons/bs';
-import { FaSearch, FaBell, FaUser, FaTools } from 'react-icons/fa';
+import { IoHomeOutline } from "react-icons/io5";
+import { MdOutlineExplore } from "react-icons/md";
+import { BsPencilFill } from "react-icons/bs";
+import { FaSearch, FaBell, FaUser, FaTools } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
 import { useLogout } from "../../hooks/useLogout";
 import { useAuthContext } from "../../hooks/useAuthContext";
@@ -19,48 +19,24 @@ function Navbar() {
     navigate("/login");
   };
 
-  // return (
-  //   <header>
-  //     <div className="container">
-  //       <Link to="/">ArtLink</Link>
-  //       <nav>
-  //         {user ? (
-  //           <>
-  //             <Link to="/">Home</Link>
-  //             <Link to="/favorites">My Favorites</Link>
-  //             <Link to={userId ? `/profile/${userId}` : "/profile"}>
-  //               My Profile
-  //             </Link>
-  //             <Link to="/profile/edit">Edit Profile</Link>
-  //             <span>{user.userData.email}</span>
-  //             <button onClick={handleLogout}>Log out</button>
-  //           </>
-  //         ) : (
-  //           <>
-  //             <Link to="/login">Login</Link>
-  //             <Link to="/signup">Signup</Link>
-  //           </>
-  //         )}
-  //       </nav>
-  //     </div>
-  //   </header>
-  // );
-
   const role = user?.userData?.role;
 
   return (
     <header className="app-header">
       {user ? (
-        role === 'admin' ? (
+        role === "admin" ? (
           <div className="header-inner admin">
             <nav className="nav-left">
               <Link to="/" className="nav-logo" draggable="false">
-                <img src={logo} alt="Logo" draggable="false"/>
+                <img src={logo} alt="Logo" draggable="false" />
               </Link>
               <Link to="#" className="nav-icon">
                 <FaTools />
               </Link>
-              <Link to="#" className="nav-icon">
+              <Link
+                to={userId ? `/profile/${userId}` : "/profile"}
+                className="nav-icon"
+              >
                 <FaUser />
               </Link>
               <Link to="#" className="nav-icon">
@@ -74,7 +50,9 @@ function Navbar() {
             </div>
 
             <div className="user-info">
-              <span className="user-email"><b>Admin</b>: {user.userData.email}</span>
+              <span className="user-email">
+                <b>Admin</b>: {user.userData.email}
+              </span>
               <button className="btn-logout" onClick={handleLogout}>
                 Log out
               </button>
@@ -84,7 +62,7 @@ function Navbar() {
           <div className="header-inner">
             <nav className="nav-left">
               <Link to="/" className="nav-logo" draggable="false">
-                <img src={logo} alt="Logo" draggable="false"/>
+                <img src={logo} alt="Logo" draggable="false" />
               </Link>
               <Link to="/" className="nav-icon">
                 <IoHomeOutline />
@@ -107,7 +85,10 @@ function Navbar() {
                 <Link to="#" className="nav-icon">
                   <FaBell />
                 </Link>
-                <Link to="#" className="nav-icon">
+                <Link
+                  to={userId ? `/profile/${userId}` : "/profile"}
+                  className="nav-icon"
+                >
                   <FaUser />
                 </Link>
               </nav>
@@ -122,7 +103,7 @@ function Navbar() {
       ) : (
         <div className="header-inner guest">
           <Link to="/login" className="nav-logo" draggable="false">
-            <img src={logo} alt="Logo" draggable="false"/>
+            <img src={logo} alt="Logo" draggable="false" />
           </Link>
 
           <nav className="nav-auth">

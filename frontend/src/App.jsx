@@ -5,6 +5,7 @@ import Home from "./pages/Home";
 import AdminHome from "./pages/AdminHome";
 import AuthPage from "./pages/AuthPage";
 import ImageDetail from "./components/ImageDetail/ImageDetail";
+import UserProfile from "./components/UserProfile/UserProfile";
 
 const App = () => {
   const { user, loadingAuth } = useAuthContext();
@@ -40,6 +41,24 @@ const App = () => {
             element={user ? <ImageDetail /> : <Navigate to="/login" replace />}
           />
 
+          {/* Rotta protetta: profilo utente */}
+          <Route
+            path="/profile/:userId"
+            element={user ? <UserProfile /> : <Navigate to="/login" replace />}
+          />
+
+          {/* Rotta protetta: profilo personale */}
+          <Route
+            path="/profile"
+            element={
+              user ? (
+                <UserProfile isOwnProfile={true} />
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
+          />
+
           {/* Login e Signup gestiti da AuthPage */}
           <Route
             path="/login"
@@ -51,6 +70,7 @@ const App = () => {
               )
             }
           />
+
           <Route
             path="/signup"
             element={
