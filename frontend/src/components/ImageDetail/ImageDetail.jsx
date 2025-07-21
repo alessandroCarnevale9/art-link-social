@@ -6,10 +6,11 @@ import {
   FaComment,
   FaShare,
   FaExpand,
+  FaTrash,
 } from "react-icons/fa";
 import { BiDotsHorizontalRounded } from "react-icons/bi";
 import { AuthContext } from "../../context/AuthContext";
-import { getComments, addComment } from "../../api/comments";
+import { getComments, addComment, deleteComment } from "../../api/comments";
 import { importMetArtwork } from "../../api/localApiReq";
 import { addFavorite, removeFavorite } from "../../api/favorites";
 import "./ImageDetail.css";
@@ -39,51 +40,27 @@ const ImageDetail = () => {
         setLikesCount(data.favoritesCount);
         setIsLiked(favorites.has(data.externalId));
 
-        // 2) Prendo i commenti "raw"
+        // 2) Prendo i commenti RAW
         const rawComments = await getComments(data._id);
 
-        let enrichedComments;
+        // Se i commenti arrivano già popolati con author.username
+        const enrichedComments = rawComments.map((c) => ({
+          ...c,
+          // Preservo authorId per il controllo di ownership
+          authorId: c.author?._id || c.authorId,
+          author: {
+            username:
+              c.author?.userData?.firstName ||
+              c.author?.firstName ||
+              c.author?.username ||
+              "Unknown",
+          },
+        }));
 
-        // --- caso A: la tua API restituisce già un campo `author` popolato ---
-        if (rawComments.length > 0 && rawComments[0].author) {
-          enrichedComments = rawComments.map((c) => ({
-            ...c,
-            author: {
-              // tanti progetti usano `userData.firstName` o `username`
-              username:
-                c.author.userData?.firstName ||
-                c.author.firstName ||
-                c.author.username ||
-                "Unknown",
-            },
-          }));
-        } else {
-          // --- caso B: ho solo authorId, recupero i nomi in parallelo ---
-          const authorIds = [
-            ...new Set(rawComments.map((c) => c.authorId)),
-          ].filter(Boolean);
-
-          const users = await Promise.all(
-            authorIds.map(async (uid) => {
-              const r = await fetch(`/api/users/${uid}`);
-              if (!r.ok) return null;
-              return await r.json(); // presuppone { _id, userData:{firstName,…}, username }
-            })
-          );
-
-          const nameById = {};
-          users.forEach((u) => {
-            if (!u) return;
-            nameById[u._id] = u.userData?.firstName || u.username || "Unknown";
-          });
-
-          enrichedComments = rawComments.map((c) => ({
-            ...c,
-            author: {
-              username: nameById[c.authorId] || "Unknown",
-            },
-          }));
-        }
+        // Ordina i commenti per data (più recenti prima)
+        enrichedComments.sort(
+          (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+        );
 
         setComments(enrichedComments);
       } catch (err) {
@@ -102,27 +79,44 @@ const ImageDetail = () => {
       navigate("/login");
       return;
     }
+
     const extId = image.externalId;
-    const already = favorites.has(extId);
+    const wasLiked = favorites.has(extId);
 
-    // Ottimistica UI update
-    const next = new Set(favorites);
-    if (already) next.delete(extId);
-    else next.add(extId);
+    // Aggiorna immediatamente la UI
+    const nextFavorites = new Set(favorites);
+    if (wasLiked) {
+      nextFavorites.delete(extId);
+      setIsLiked(false);
+      setLikesCount((prev) => prev - 1);
+    } else {
+      nextFavorites.add(extId);
+      setIsLiked(true);
+      setLikesCount((prev) => prev + 1);
+    }
 
-    setIsLiked(!already);
-    setLikesCount((c) => (already ? c - 1 : c + 1));
-    dispatch({ type: "SET_FAVORITES", payload: next });
+    dispatch({ type: "SET_FAVORITES", payload: nextFavorites });
 
     try {
       const { artwork } = await importMetArtwork(extId);
-      if (!already) await addFavorite(artwork._id);
-      else await removeFavorite(artwork._id);
+      if (wasLiked) {
+        await removeFavorite(artwork._id);
+      } else {
+        await addFavorite(artwork._id);
+      }
     } catch (err) {
       console.error(err);
-      // rollback
-      setIsLiked(already);
-      setLikesCount((c) => (already ? c + 1 : c - 1));
+
+      // Rollback in caso di errore
+      if (wasLiked) {
+        favorites.add(extId);
+        setIsLiked(true);
+        setLikesCount((prev) => prev + 1);
+      } else {
+        favorites.delete(extId);
+        setIsLiked(false);
+        setLikesCount((prev) => prev - 1);
+      }
       dispatch({ type: "SET_FAVORITES", payload: favorites });
     }
   };
@@ -139,16 +133,31 @@ const ImageDetail = () => {
       const created = await addComment(image._id, {
         text: newComment.trim(),
       });
-      setComments((prev) => [
-        ...prev,
-        {
-          ...created,
-          author: { username: user.userData.firstName },
-        },
-      ]);
+
+      // Crea il nuovo commento arricchito
+      const newCommentObj = {
+        ...created,
+        authorId: user.userData.id,
+        author: { username: user.userData.firstName },
+      };
+
+      // Aggiungi il nuovo commento in CIMA alla lista (non in fondo)
+      setComments((prev) => [newCommentObj, ...prev]);
       setNewComment("");
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    if (!window.confirm("Sei sicuro di voler eliminare questo commento?"))
+      return;
+    try {
+      await deleteComment(image._id, commentId);
+      setComments((prev) => prev.filter((c) => c._id !== commentId));
+    } catch (err) {
+      console.error("Impossibile eliminare il commento:", err);
+      alert("Errore durante l'eliminazione del commento.");
     }
   };
 
@@ -231,6 +240,15 @@ const ImageDetail = () => {
                       {new Date(c.createdAt).toLocaleDateString()}
                     </div>
                   </div>
+                  {/* mostra il pulsante di delete solo all'autore */}
+                  {user && c.authorId === user.userData.id && (
+                    <button
+                      className="delete-button"
+                      onClick={() => handleDeleteComment(c._id)}
+                    >
+                      <FaTrash />
+                    </button>
+                  )}
                 </div>
               ))}
             </div>

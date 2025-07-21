@@ -298,3 +298,29 @@
         align-self: flex-start;
     }
 }
+
+/* Assicura che .comment sia container relativo per il posizionamento assoluto */
+.comment {
+    position: relative;
+}
+
+/* Stile del bottone di delete */
+.delete-button {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: none;
+    border: none;
+    color: #6c757d;
+    font-size: 14px;
+    padding: 4px;
+    cursor: pointer;
+    transition: color 0.2s, background-color 0.2s;
+    border-radius: 4px;
+}
+
+/* Hover per evidenziare l’icona */
+.delete-button:hover {
+    color: #e74c3c;
+    background: rgba(231, 76, 60, 0.1);
+}
