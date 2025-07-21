@@ -1,4 +1,4 @@
-import {
+import React, {
   createContext,
   useReducer,
   useEffect,
@@ -6,21 +6,29 @@ import {
   useCallback,
   useRef,
 } from "react";
+import { getMyFavorites } from "../api/favorites"; // ← importa l’endpoint
 
 export const AuthContext = createContext();
+
+const initialState = {
+  user: null,
+  favorites: new Set(),
+};
 
 export const authReducer = (state, action) => {
   switch (action.type) {
     case "LOGIN":
-      return { user: action.payload };
+      return { ...state, user: action.payload };
     case "LOGOUT":
-      return { user: null };
+      return { user: null, favorites: new Set() };
+    case "SET_FAVORITES":
+      return { ...state, favorites: action.payload };
     default:
       return state;
   }
 };
 
-// Decode JWT payload
+// funzione di parsing del JWT
 const parseJwt = (token) => {
   try {
     const [, payload] = token.split(".");
@@ -30,7 +38,7 @@ const parseJwt = (token) => {
   }
 };
 
-// Check token expiration
+// verifica scadenza token
 const isTokenValid = (token) => {
   if (!token) return false;
   const { exp } = parseJwt(token);
@@ -38,11 +46,11 @@ const isTokenValid = (token) => {
 };
 
 export const AuthContextProvider = ({ children }) => {
-  const [state, dispatch] = useReducer(authReducer, { user: null });
+  const [state, dispatch] = useReducer(authReducer, initialState);
   const [loadingAuth, setLoadingAuth] = useState(true);
   const refreshTimerRef = useRef(null);
 
-  // effettua refresh via cookie
+  // refresh del token via cookie
   const refreshToken = useCallback(async () => {
     try {
       const res = await fetch("/api/auth/refresh", {
@@ -61,50 +69,53 @@ export const AuthContextProvider = ({ children }) => {
     }
   }, []);
 
+  // all’avvio: login/refresh + caricamento favorites
   useEffect(() => {
     (async () => {
+      let jwt = null;
       const raw = localStorage.getItem("jwt");
       if (raw) {
         try {
           const parsed = JSON.parse(raw);
           if (isTokenValid(parsed.accessToken)) {
             dispatch({ type: "LOGIN", payload: parsed });
+            jwt = parsed;
           } else {
-            await refreshToken();
+            jwt = await refreshToken();
           }
         } catch {
           localStorage.removeItem("jwt");
         }
       } else {
-        await refreshToken();
+        jwt = await refreshToken();
       }
+
+      if (jwt) {
+        try {
+          const favs = await getMyFavorites();
+          const favSet = new Set(favs.map((a) => a.externalId || a._id));
+          dispatch({ type: "SET_FAVORITES", payload: favSet });
+        } catch (err) {
+          console.error("Failed to load favorites:", err);
+        }
+      }
+
       setLoadingAuth(false);
     })();
   }, [refreshToken]);
 
+  // pianifica refresh automatico un minuto prima della scadenza
   useEffect(() => {
-    if (refreshTimerRef.current) {
-      clearTimeout(refreshTimerRef.current);
-      refreshTimerRef.current = null;
-    }
-    // se ho un token valido, calcolo scadenza
+    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
     const token = state.user?.accessToken;
     if (token) {
       const { exp } = parseJwt(token);
-      const delay = exp * 1000 - Date.now() - 60 * 1000; // 1 min prima
+      const delay = exp * 1000 - Date.now() - 60_000;
       if (delay > 0) {
-        refreshTimerRef.current = setTimeout(() => {
-          refreshToken();
-        }, delay);
+        refreshTimerRef.current = setTimeout(refreshToken, delay);
       }
     }
-  
-    return () => {
-      if (refreshTimerRef.current) {
-        clearTimeout(refreshTimerRef.current);
-        refreshTimerRef.current = null;
-      }
-    };
+    return () => clearTimeout(refreshTimerRef.current);
   }, [state.user, refreshToken]);
 
   if (loadingAuth) {
@@ -112,7 +123,13 @@ export const AuthContextProvider = ({ children }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user: state.user, dispatch, loadingAuth }}>
+    <AuthContext.Provider
+      value={{
+        user: state.user,
+        favorites: state.favorites,
+        dispatch,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

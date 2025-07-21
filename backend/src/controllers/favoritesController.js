@@ -1,6 +1,5 @@
 const asyncHandler = require("express-async-handler");
 const ApiError = require("../utils/ApiError");
-const { GeneralUser } = require("../models/UserModel");
 const Artwork = require("../models/ArtworkModel");
 const Favorite = require("../models/FavoriteModel");
 
@@ -12,20 +11,26 @@ const addFavorite = asyncHandler(async (req, res) => {
   const userId = req.params.id === "me" ? req.userId : req.params.id;
   const artworkId = req.params.artworkId;
 
-  // Controlla che l'opera esista
+  // 1) Verifica che l'opera esista
   const artExists = await Artwork.exists({ _id: artworkId });
-  if (!artExists) throw new ApiError(404, "Artwork not found.");
+  if (!artExists) {
+    throw new ApiError(404, "Artwork not found.");
+  }
 
-  // Crea un nuovo documento Favorite; l'indice unico previene duplicati
+  // 2) Crea il favorite (indice unico previene duplicati)
   try {
     await Favorite.create({ user: userId, artwork: artworkId });
   } catch (e) {
     if (e.code === 11000) {
-      // Duplicate key error
       throw new ApiError(409, "Artwork is already in favorites.");
     }
     throw e;
   }
+
+  // 3) Incrementa il contatore favoriteCount su Artwork
+  await Artwork.findByIdAndUpdate(artworkId, {
+    $inc: { favoriteCount: 1 },
+  });
 
   res.status(201).json({ message: "Artwork added to favorites." });
 });
@@ -38,6 +43,7 @@ const removeFavorite = asyncHandler(async (req, res) => {
   const userId = req.params.id === "me" ? req.userId : req.params.id;
   const artworkId = req.params.artworkId;
 
+  // 1) Rimuove il favorite
   const result = await Favorite.findOneAndDelete({
     user: userId,
     artwork: artworkId,
@@ -46,6 +52,11 @@ const removeFavorite = asyncHandler(async (req, res) => {
   if (!result) {
     throw new ApiError(404, "Favorite not found.");
   }
+
+  // 2) Decrementa il contatore favoriteCount su Artwork
+  await Artwork.findByIdAndUpdate(artworkId, {
+    $inc: { favoriteCount: -1 },
+  });
 
   res.status(204).send();
 });
@@ -57,12 +68,12 @@ const removeFavorite = asyncHandler(async (req, res) => {
 const getFavorites = asyncHandler(async (req, res) => {
   const userId = req.params.id === "me" ? req.userId : req.params.id;
 
-  // Trova tutti i Favorite di questo utente e popola l'artwork
+  // 1) Trova tutti i Favorite e popola l'artwork
   const favs = await Favorite.find({ user: userId })
     .populate({
       path: "artwork",
       select:
-        "title publishDate linkResource medium dimensions origin description",
+        "externalId title publishDate linkResource medium dimensions origin description favoriteCount",
       populate: [
         { path: "artistId", select: "displayName" },
         { path: "categories", select: "name" },
@@ -70,8 +81,9 @@ const getFavorites = asyncHandler(async (req, res) => {
     })
     .lean();
 
-  // Restituisci solo gli artwork
-  res.json(favs.map((f) => f.artwork));
+  // 2) Restituisci solo gli artwork
+  const artworks = favs.map((f) => f.artwork);
+  res.json(artworks);
 });
 
 module.exports = {

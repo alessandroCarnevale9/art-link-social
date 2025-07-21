@@ -5,6 +5,12 @@ require("./CommentModel");
 
 const artworkSchema = new Schema(
   {
+    externalId: {
+      type: Number,
+      unique: true,
+      sparse: true,
+    },
+
     title: {
       type: String,
       required: true,
@@ -18,8 +24,14 @@ const artworkSchema = new Schema(
     dimensions: String,
     origin: {
       type: String,
-      enum: ["AdminUploaded", "UserUploaded"],
+      enum: ["AdminUploaded", "UserUploaded", "MET"],
       required: true,
+    },
+    externalId: {
+      // l’objectID del MET, se origin==="MET"
+      type: Number,
+      unique: true,
+      sparse: true,
     },
     authorId: {
       type: Schema.Types.ObjectId,

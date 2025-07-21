@@ -1,3 +1,4 @@
+// src/components/Card/Card.jsx
 import { FaHeart, FaRegHeart, FaFlag } from "react-icons/fa";
 import "./Card.css";
 
@@ -7,7 +8,6 @@ const Card = ({ image, isLiked, onLike, onReport, className = "" }) => {
       <div className="image-container">
         <img src={image.src} alt={image.alt} loading="lazy" />
 
-        {/* Bottone report fisso in alto a destra */}
         <button
           className="report-button-fixed"
           onClick={() => onReport(image.id)}
@@ -16,7 +16,6 @@ const Card = ({ image, isLiked, onLike, onReport, className = "" }) => {
           <FaFlag className="report-icon" />
         </button>
 
-        {/* Overlay con solo il bottone like al centro */}
         <div className="overlay">
           <button
             className={`like-button ${isLiked ? "liked" : ""}`}
