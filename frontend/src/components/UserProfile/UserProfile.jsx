@@ -35,21 +35,21 @@ const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
       let data;
 
       if (isOwnProfile) {
-        // Se è il proprio profilo, carica sempre getMe()
+        // If it's own profile, always load getMe()
         data = await getMe();
       } else if (paramUserId) {
-        // Se è un altro profilo e abbiamo l'ID, caricalo
+        // If it's another profile and we have the ID, load it
         data = await getUserById(paramUserId);
       } else {
-        // Se non è il proprio profilo ma non abbiamo ID, errore
-        throw new Error("ID utente mancante");
+        // If it's not own profile but we don't have ID, error
+        throw new Error("Missing user ID");
       }
 
       setUserProfile(data);
       return data;
     } catch (err) {
-      console.error("Errore nel caricamento del profilo:", err);
-      setError("Impossibile caricare il profilo utente");
+      console.error("Error loading profile:", err);
+      setError("Unable to load user profile");
       return null;
     }
   }, [isOwnProfile, paramUserId]);
@@ -63,7 +63,7 @@ const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
       });
       setArtworks(data || []);
     } catch (err) {
-      console.error("Errore nel caricamento delle opere:", err);
+      console.error("Error loading artworks:", err);
       setArtworks([]);
     }
   };
@@ -77,7 +77,7 @@ const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
       setFollowers(followersData || []);
       setFollowing(followingData || []);
     } catch (err) {
-      console.error("Errore nel caricamento dei follow:", err);
+      console.error("Error loading follow data:", err);
       setFollowers([]);
       setFollowing([]);
     }
@@ -108,26 +108,26 @@ const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
         } catch {}
       }
     } catch (err) {
-      console.error("Errore nell'operazione di follow:", err);
-      setError("Impossibile completare l'operazione");
+      console.error("Error in follow operation:", err);
+      setError("Unable to complete operation");
       setIsFollowing((prev) => !prev); // rollback
     } finally {
       setActionLoading(false);
     }
   };
 
-  // ─────────────── caricamento iniziale ───────────────
+  // ─────────────── initial loading ───────────────
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
       setError(null);
 
       try {
-        // Carica sempre l'utente corrente per i confronti
+        // Always load current user for comparisons
         const me = await getMe();
         setCurrentUserId(extractId(me));
 
-        // Carica il profilo target
+        // Load target profile
         const targetUser = await loadUserProfile();
         const targetUserId = extractId(targetUser);
 
@@ -136,14 +136,14 @@ const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
           return;
         }
 
-        // Carica artworks e dati follow
+        // Load artworks and follow data
         await Promise.all([
           loadUserArtworks(targetUserId),
           loadFollowData(targetUserId),
         ]);
       } catch (e) {
-        console.error("Errore nel caricamento generale:", e);
-        setError("Errore nel caricamento dei dati");
+        console.error("Error in general loading:", e);
+        setError("Error loading data");
       } finally {
         setLoading(false);
       }
@@ -152,14 +152,14 @@ const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
     loadData();
   }, [paramUserId, isOwnProfile, loadUserProfile]);
 
-  // ─────────────── sync isFollowing con followers ───────────────
+  // ─────────────── sync isFollowing with followers ───────────────
   useEffect(() => {
     if (!currentUserId || !userProfile || isOwnProfile) {
       setIsFollowing(false);
       return;
     }
 
-    // Controlla se l'utente corrente sta seguendo il profilo visualizzato
+    // Check if current user is following the displayed profile
     setIsFollowing(followers.some((f) => extractId(f) === currentUserId));
   }, [followers, currentUserId, userProfile, isOwnProfile]);
 
@@ -173,7 +173,7 @@ const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
     return (
       <div className="user-profile">
         <div className="profile-header">
-          <div className="loading-placeholder">Caricamento...</div>
+          <div className="loading-placeholder">Loading...</div>
         </div>
       </div>
     );
@@ -193,7 +193,7 @@ const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
     return (
       <div className="user-profile">
         <div className="profile-header">
-          <div className="error-message">Profilo non trovato</div>
+          <div className="error-message">Profile not found</div>
         </div>
       </div>
     );
@@ -216,7 +216,7 @@ const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
   const getDisplayName = () =>
     userProfile.firstName || userProfile.lastName
       ? `${userProfile.firstName || ""} ${userProfile.lastName || ""}`.trim()
-      : userProfile.email?.split("@")[0] || "Utente";
+      : userProfile.email?.split("@")[0] || "User";
 
   const handleArtworkClick = (id) =>
     onArtworkClick ? onArtworkClick(id) : console.log(`Navigate to ${id}`);
@@ -237,12 +237,12 @@ const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
             <span className="stat-number">{following.length}</span> following
           </span>
           <span className="stat-item">
-            <span className="stat-number">{artworks.length}</span> opere
+            <span className="stat-number">{artworks.length}</span> artworks
           </span>
         </div>
 
         <div className="action-buttons">
-          {/* Mostra il pulsante follow solo se NON è il proprio profilo */}
+          {/* Show follow button only if NOT own profile */}
           {!isViewingOwnProfile && (
             <button
               onClick={handleFollowToggle}
@@ -313,8 +313,8 @@ const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
           <div className="empty-state">
             <p>
               {isViewingOwnProfile
-                ? "Non hai ancora caricato nessuna opera."
-                : "Questo utente non ha ancora caricato opere."}
+                ? "You haven't uploaded any artworks yet."
+                : "This user hasn't uploaded any artworks yet."}
             </p>
           </div>
         )}

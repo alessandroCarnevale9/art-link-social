@@ -2,15 +2,15 @@
     max-width: 800px;
     margin: 0 auto;
     padding: 20px;
-    background: #f8f9fa;
+    background: #f8f8f8;
     min-height: 100vh;
 }
 
 .image-detail-content {
-    background: white;
+    background: #ffffff;
     border-radius: 16px;
     padding: 20px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .detail-header {
@@ -19,7 +19,7 @@
     align-items: center;
     margin-bottom: 16px;
     padding-bottom: 12px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid #eaeaea;
 }
 
 .user-info {
@@ -32,11 +32,11 @@
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: #6c757d;
+    background: linear-gradient(135deg, #6e8efb, #a777e3);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: white;
+    color: #ffffff;
     font-weight: bold;
     font-size: 14px;
 }
@@ -49,7 +49,7 @@
 
 .username {
     font-weight: 600;
-    color: #333;
+    color: #222;
 }
 
 .more-options {
@@ -58,7 +58,7 @@
     padding: 8px;
     border-radius: 50%;
     cursor: pointer;
-    color: #6c757d;
+    color: #666;
     font-size: 20px;
     transition: background-color 0.2s;
 }
@@ -86,10 +86,10 @@
     position: absolute;
     top: 12px;
     right: 12px;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.70);
     border: none;
     border-radius: 6px;
-    color: white;
+    color: #ffffff;
     padding: 8px;
     cursor: pointer;
     opacity: 0;
@@ -105,7 +105,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 12px 0;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid #eaeaea;
     margin-bottom: 16px;
 }
 
@@ -125,7 +125,7 @@
     border-radius: 8px;
     transition: background-color 0.2s;
     font-size: 16px;
-    color: #6c757d;
+    color: #666;
 }
 
 .action-button:hover {
@@ -145,11 +145,11 @@
     font-size: 24px;
     font-weight: 700;
     margin: 0 0 8px 0;
-    color: #333;
+    color: #222;
 }
 
 .image-info p {
-    color: #6c757d;
+    color: #666;
     margin: 0 0 20px 0;
     line-height: 1.5;
 }
@@ -158,11 +158,11 @@
     font-size: 18px;
     font-weight: 600;
     margin: 0 0 16px 0;
-    color: #333;
+    color: #222;
 }
 
 .no-comments {
-    color: #6c757d;
+    color: #666;
     text-align: center;
     padding: 20px;
     font-style: italic;
@@ -177,8 +177,9 @@
     gap: 12px;
     margin-bottom: 16px;
     padding: 12px;
-    background: #f8f9fa;
+    background: #f8f8f8;
     border-radius: 8px;
+    position: relative;
 }
 
 .comment-content {
@@ -188,23 +189,23 @@
 .comment-author {
     font-weight: 600;
     font-size: 14px;
-    color: #333;
+    color: #222;
     margin-bottom: 4px;
 }
 
 .comment-text {
-    color: #444;
+    color: #333;
     line-height: 1.4;
     margin-bottom: 4px;
 }
 
 .comment-time {
     font-size: 12px;
-    color: #6c757d;
+    color: #666;
 }
 
 .comment-form {
-    border-top: 1px solid #eee;
+    border-top: 1px solid #eaeaea;
     padding-top: 16px;
 }
 
@@ -216,7 +217,7 @@
 
 .comment-input {
     flex: 1;
-    border: 1px solid #ddd;
+    border: 1px solid #eaeaea;
     border-radius: 24px;
     padding: 10px 16px;
     font-size: 14px;
@@ -225,12 +226,12 @@
 }
 
 .comment-input:focus {
-    border-color: #007bff;
+    border-color: hsla(204, 100%, 48%, 0.70);
 }
 
 .send-button {
-    background: #007bff;
-    color: white;
+    background: hsla(204, 100%, 48%, 0.70);
+    color: #ffffff;
     border: none;
     border-radius: 20px;
     padding: 8px 16px;
@@ -241,11 +242,11 @@
 }
 
 .send-button:hover:not(:disabled) {
-    background: #0056b3;
+    background: hsla(204, 100%, 48%, 0.80);
 }
 
 .send-button:disabled {
-    background: #ccc;
+    background: #6c757d;
     cursor: not-allowed;
 }
 
@@ -255,10 +256,10 @@
     align-items: center;
     height: 50vh;
     font-size: 18px;
-    color: #6c757d;
+    color: #666;
 }
 
-/* Aggiornamento CSS per Card cliccabile */
+/* Card cliccabile */
 .card {
     cursor: pointer;
     transition: transform 0.2s, box-shadow 0.2s;
@@ -266,12 +267,32 @@
 
 .card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.10);
 }
 
 .like-button {
     z-index: 10;
     position: relative;
+}
+
+/* Bottone di delete */
+.delete-button {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: none;
+    border: none;
+    color: #666;
+    font-size: 14px;
+    padding: 4px;
+    cursor: pointer;
+    transition: color 0.2s, background-color 0.2s;
+    border-radius: 4px;
+}
+
+.delete-button:hover {
+    color: #e74c3c;
+    background: rgba(231, 76, 60, 0.10);
 }
 
 /* Responsive */
@@ -297,30 +318,4 @@
     .user-avatar.small {
         align-self: flex-start;
     }
-}
-
-/* Assicura che .comment sia container relativo per il posizionamento assoluto */
-.comment {
-    position: relative;
-}
-
-/* Stile del bottone di delete */
-.delete-button {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    background: none;
-    border: none;
-    color: #6c757d;
-    font-size: 14px;
-    padding: 4px;
-    cursor: pointer;
-    transition: color 0.2s, background-color 0.2s;
-    border-radius: 4px;
-}
-
-/* Hover per evidenziare l’icona */
-.delete-button:hover {
-    color: #e74c3c;
-    background: rgba(231, 76, 60, 0.1);
 }

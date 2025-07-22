@@ -32,21 +32,21 @@ const ImageDetail = () => {
       try {
         setLoading(true);
 
-        // 1) Prendo i dettagli dell'immagine
+        // 1) Get image details
         const resImg = await fetch(`/api/artworks/${id}`);
-        if (!resImg.ok) throw new Error("Impossibile caricare l'immagine");
+        if (!resImg.ok) throw new Error("Unable to load image");
         const data = await resImg.json();
         setImage(data);
         setLikesCount(data.favoritesCount);
         setIsLiked(favorites.has(data.externalId));
 
-        // 2) Prendo i commenti RAW
+        // 2) Get raw comments
         const rawComments = await getComments(data._id);
 
-        // Se i commenti arrivano già popolati con author.username
+        // If comments already come populated with author.username
         const enrichedComments = rawComments.map((c) => ({
           ...c,
-          // Preservo authorId per il controllo di ownership
+          // Preserve authorId for ownership control
           authorId: c.author?._id || c.authorId,
           author: {
             username:
@@ -57,7 +57,7 @@ const ImageDetail = () => {
           },
         }));
 
-        // Ordina i commenti per data (più recenti prima)
+        // Sort comments by date (most recent first)
         enrichedComments.sort(
           (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
         );
@@ -83,7 +83,7 @@ const ImageDetail = () => {
     const extId = image.externalId;
     const wasLiked = favorites.has(extId);
 
-    // Aggiorna immediatamente la UI
+    // Immediately update UI
     const nextFavorites = new Set(favorites);
     if (wasLiked) {
       nextFavorites.delete(extId);
@@ -107,7 +107,7 @@ const ImageDetail = () => {
     } catch (err) {
       console.error(err);
 
-      // Rollback in caso di errore
+      // Rollback on error
       if (wasLiked) {
         favorites.add(extId);
         setIsLiked(true);
@@ -134,14 +134,14 @@ const ImageDetail = () => {
         text: newComment.trim(),
       });
 
-      // Crea il nuovo commento arricchito
+      // Create the new enriched comment
       const newCommentObj = {
         ...created,
         authorId: user.userData.id,
         author: { username: user.userData.firstName },
       };
 
-      // Aggiungi il nuovo commento in CIMA alla lista (non in fondo)
+      // Add the new comment at the TOP of the list (not at the bottom)
       setComments((prev) => [newCommentObj, ...prev]);
       setNewComment("");
     } catch (err) {
@@ -150,19 +150,19 @@ const ImageDetail = () => {
   };
 
   const handleDeleteComment = async (commentId) => {
-    if (!window.confirm("Sei sicuro di voler eliminare questo commento?"))
+    if (!window.confirm("Are you sure you want to delete this comment?"))
       return;
     try {
       await deleteComment(image._id, commentId);
       setComments((prev) => prev.filter((c) => c._id !== commentId));
     } catch (err) {
-      console.error("Impossibile eliminare il commento:", err);
-      alert("Errore durante l'eliminazione del commento.");
+      console.error("Unable to delete comment:", err);
+      alert("Error deleting comment.");
     }
   };
 
   if (loading || !image) {
-    return <div className="loading">Caricamento…</div>;
+    return <div className="loading">Loading...</div>;
   }
 
   return (
@@ -183,19 +183,19 @@ const ImageDetail = () => {
           </button>
         </div>
 
-        {/* Immagine */}
+        {/* Image */}
         <div className="main-image-container">
           <img
             src={image.linkResource}
             alt={image.title}
             className="main-image"
           />
-          <button className="expand-button" title="Espandi">
+          <button className="expand-button" title="Expand">
             <FaExpand />
           </button>
         </div>
 
-        {/* Azioni */}
+        {/* Actions */}
         <div className="action-bar">
           <div className="action-group">
             <button
@@ -215,17 +215,17 @@ const ImageDetail = () => {
           </div>
         </div>
 
-        {/* Info immagine */}
+        {/* Image info */}
         <div className="image-info">
           <h1>{image.title}</h1>
           {image.description && <p>{image.description}</p>}
         </div>
 
-        {/* Commenti */}
+        {/* Comments */}
         <div className="comments-section">
-          <h3>Commenti</h3>
+          <h3>Comments</h3>
           {comments.length === 0 ? (
-            <p className="no-comments">Nessun commento ancora</p>
+            <p className="no-comments">No comments yet</p>
           ) : (
             <div className="comments-list">
               {comments.map((c) => (
@@ -240,7 +240,7 @@ const ImageDetail = () => {
                       {new Date(c.createdAt).toLocaleDateString()}
                     </div>
                   </div>
-                  {/* mostra il pulsante di delete solo all'autore */}
+                  {/* show delete button only to the author */}
                   {user && c.authorId === user.userData.id && (
                     <button
                       className="delete-button"
@@ -265,7 +265,7 @@ const ImageDetail = () => {
                 type="text"
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
-                placeholder="Aggiungi un commento"
+                placeholder="Add a comment"
                 className="comment-input"
               />
               <button
@@ -273,7 +273,7 @@ const ImageDetail = () => {
                 className="send-button"
                 disabled={!newComment.trim()}
               >
-                Invia
+                Send
               </button>
             </div>
           </form>

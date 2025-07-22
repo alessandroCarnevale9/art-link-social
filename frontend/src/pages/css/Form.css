@@ -26,7 +26,7 @@
 }
 
 .link-btn {
-  color: #f04c3f;
+  color: hsla(4, 86%, 59%, 0.75);
   font-weight: 600;
   text-decoration: none;
   background: none;
@@ -74,7 +74,7 @@
 }
 
 .input-group input:focus {
-  border-bottom-color: #f04c3f;
+  border-bottom-color: hsla(4, 86%, 59%, 0.75);
 }
 
 /* Pulsanti */
@@ -93,7 +93,7 @@
 
 .btn-login:hover,
 .btn-signup:hover {
-  background: #333;
+  background:hsla(4, 86%, 59%, 0.75);
 }
 
 .btn-login:disabled,
