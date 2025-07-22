@@ -4,16 +4,17 @@ import { IoHomeOutline } from "react-icons/io5";
 import { MdOutlineExplore } from "react-icons/md";
 import { BsPencilFill } from "react-icons/bs";
 import { FaSearch, FaBell, FaUser, FaTools } from "react-icons/fa";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useLogout } from "../../hooks/useLogout";
 import { useAuthContext } from "../../hooks/useAuthContext";
-import { search } from "../../api/search"; // Importa la funzione search
+import { search } from "../../api/search";
 import { useState, useRef, useEffect } from "react";
 
 function Navbar() {
   const { logout } = useLogout();
   const { user } = useAuthContext();
   const navigate = useNavigate();
+  const location = useLocation(); // Per rilevare la route corrente
   const userId = user?.userData.id;
 
   // Stati per la ricerca
@@ -36,7 +37,6 @@ function Navbar() {
       setShowResults(false);
       return;
     }
-
     setIsSearching(true);
     try {
       const response = await search(query, "all", 1, 10);
@@ -54,40 +54,31 @@ function Navbar() {
   const handleSearchChange = (e) => {
     const query = e.target.value;
     setSearchQuery(query);
-
-    // Cancella il timeout precedente
     if (searchTimeout.current) {
       clearTimeout(searchTimeout.current);
     }
-
-    // Imposta un nuovo timeout per evitare troppe chiamate API
     searchTimeout.current = setTimeout(() => {
       performSearch(query);
     }, 300);
   };
 
   // Gestisce il click su un risultato di ricerca
-  // Gestisce il click su un risultato di ricerca
   const handleResultClick = (type, item) => {
     setShowResults(false);
     setSearchQuery("");
     setSearchResults(null);
-
     console.log("item ---> \t", item);
 
-    // Ottieni l'ID in modo sicuro, gestendo entrambi i formati
     const getId = (obj) => {
       return obj._id || obj.id || obj["*id"] || null;
     };
 
     const itemId = getId(item);
-
     if (!itemId) {
       console.error("ID non trovato per item:", item);
       return;
     }
 
-    // Naviga al risultato appropriato
     switch (type) {
       case "artwork":
         console.log(`artwork ID ${itemId}`);
@@ -113,7 +104,6 @@ function Navbar() {
         setShowResults(false);
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
@@ -128,6 +118,25 @@ function Navbar() {
       }
     };
   }, []);
+
+  // Determina quale pulsante mostrare in base alla route corrente
+  const getAuthButton = () => {
+    const currentPath = location.pathname;
+
+    if (currentPath === "/login") {
+      return (
+        <Link to="/signup" className="btn-auth" draggable="false">
+          Sign up
+        </Link>
+      );
+    } else {
+      return (
+        <Link to="/login" className="btn-auth" draggable="false">
+          Log in
+        </Link>
+      );
+    }
+  };
 
   const role = user?.userData?.role;
 
@@ -153,7 +162,6 @@ function Navbar() {
                 <MdOutlineExplore />
               </Link>
             </nav>
-
             <div className="search-container" ref={searchRef}>
               <div className="search-box">
                 <input
@@ -166,7 +174,6 @@ function Navbar() {
                   className={`search-icon ${isSearching ? "searching" : ""}`}
                 />
               </div>
-
               {showResults && (
                 <div className="search-results">
                   {searchResults && (
@@ -195,7 +202,6 @@ function Navbar() {
                           ))}
                         </div>
                       )}
-
                       {/* Risultati Users */}
                       {searchResults.results.users?.length > 0 && (
                         <div className="results-section">
@@ -216,7 +222,6 @@ function Navbar() {
                           ))}
                         </div>
                       )}
-
                       {/* Risultati Categories */}
                       {searchResults.results.categories?.length > 0 && (
                         <div className="results-section">
@@ -236,7 +241,6 @@ function Navbar() {
                           ))}
                         </div>
                       )}
-
                       {/* Nessun risultato */}
                       {!searchResults.results.artworks?.length &&
                         !searchResults.results.users?.length &&
@@ -250,7 +254,6 @@ function Navbar() {
                 </div>
               )}
             </div>
-
             <div className="user-info">
               <span className="user-email">
                 <b>Admin</b>: {user.userData.email}
@@ -276,7 +279,6 @@ function Navbar() {
                 <BsPencilFill />
               </Link>
             </nav>
-
             <div className="search-container" ref={searchRef}>
               <div className="search-box">
                 <input
@@ -289,7 +291,6 @@ function Navbar() {
                   className={`search-icon ${isSearching ? "searching" : ""}`}
                 />
               </div>
-
               {showResults && (
                 <div className="search-results">
                   {searchResults && (
@@ -318,7 +319,6 @@ function Navbar() {
                           ))}
                         </div>
                       )}
-
                       {/* Risultati Users */}
                       {searchResults.results.users?.length > 0 && (
                         <div className="results-section">
@@ -339,7 +339,6 @@ function Navbar() {
                           ))}
                         </div>
                       )}
-
                       {/* Risultati Categories */}
                       {searchResults.results.categories?.length > 0 && (
                         <div className="results-section">
@@ -359,7 +358,6 @@ function Navbar() {
                           ))}
                         </div>
                       )}
-
                       {/* Nessun risultato */}
                       {!searchResults.results.artworks?.length &&
                         !searchResults.results.users?.length &&
@@ -373,7 +371,6 @@ function Navbar() {
                 </div>
               )}
             </div>
-
             <div className="user-info">
               <nav className="nav-right">
                 <Link to="#" className="nav-icon">
@@ -386,7 +383,6 @@ function Navbar() {
                   <FaUser />
                 </Link>
               </nav>
-
               <span className="user-email">{user.userData.email}</span>
               <button className="btn-logout" onClick={handleLogout}>
                 Log out
@@ -399,15 +395,7 @@ function Navbar() {
           <Link to="/login" className="nav-logo" draggable="false">
             <img src={logo} alt="Logo" draggable="false" />
           </Link>
-
-          <nav className="nav-auth">
-            <Link to="/login" className="btn-auth" draggable="false">
-              Login
-            </Link>
-            <Link to="/signup" className="btn-auth" draggable="false">
-              Signup
-            </Link>
-          </nav>
+          <nav className="nav-auth">{getAuthButton()}</nav>
         </div>
       )}
     </header>
