@@ -1,0 +1,52 @@
+/* Contenitore opzionale — serve solo se vuoi che il video occupi
+   tutto lo schermo senza impattare altri elementi */
+.video-wrapper {
+    position: relative;
+    /* l’overlay si posizionerà su questo contesto */
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* Il video “di sfondo” */
+.auth-video {
+    position: absolute;
+    inset: 0;
+    /* top:0 right:0 bottom:0 left:0 */
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    /* riempie il contenitore ritagliando */
+    object-position: center;
+    pointer-events: none;
+    /* il cursore passa “attraverso” */
+    z-index: -1;
+    /* resta dietro a tutto il resto  */
+    background: #000;
+    /* fallback se il video non si carica */
+}
+
+/* Sovrapposizione con gradiente */
+.video-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+/* ————————————————————————
+   Varianti “fluid” per schermi piccoli
+   ———————————————————————— */
+@media (max-width: 640px) {
+    .auth-video {
+        object-position: 50% 30%;
+        /* inquadra leggermente più in alto su mobile */
+    }
+}
+
+/* Se vuoi che altri contenuti si posizionino sopra il video,
+   basta aggiungere la classe .on-video agli elementi interessati
+   (o usare z-index maggiori) */
+.on-video {
+    position: relative;
+    z-index: 1;
+}

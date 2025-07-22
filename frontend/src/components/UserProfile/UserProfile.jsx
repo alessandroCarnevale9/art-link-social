@@ -15,7 +15,6 @@ const extractId = (u) => u?._id || u?.id || null;
 
 const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
   const { userId: paramUserId } = useParams();
-  const userIdToLoad = isOwnProfile ? null : paramUserId;
 
   // ─────────────── state ───────────────
   const [userProfile, setUserProfile] = useState(null);
@@ -33,10 +32,18 @@ const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
   // ─────────────── helpers ───────────────
   const loadUserProfile = useCallback(async () => {
     try {
-      const data =
-        isOwnProfile || !userIdToLoad
-          ? await getMe()
-          : await getUserById(userIdToLoad);
+      let data;
+
+      if (isOwnProfile) {
+        // Se è il proprio profilo, carica sempre getMe()
+        data = await getMe();
+      } else if (paramUserId) {
+        // Se è un altro profilo e abbiamo l'ID, caricalo
+        data = await getUserById(paramUserId);
+      } else {
+        // Se non è il proprio profilo ma non abbiamo ID, errore
+        throw new Error("ID utente mancante");
+      }
 
       setUserProfile(data);
       return data;
@@ -45,7 +52,7 @@ const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
       setError("Impossibile caricare il profilo utente");
       return null;
     }
-  }, [isOwnProfile, userIdToLoad]);
+  }, [isOwnProfile, paramUserId]);
 
   const loadUserArtworks = async (id) => {
     try {
@@ -79,7 +86,7 @@ const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
   // ─────────────── toggle follow / unfollow ───────────────
   const handleFollowToggle = async () => {
     const targetUserId = extractId(userProfile);
-    if (!targetUserId || actionLoading) return;
+    if (!targetUserId || actionLoading || isOwnProfile) return;
 
     setActionLoading(true);
     try {
@@ -116,25 +123,30 @@ const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
       setError(null);
 
       try {
+        // Carica sempre l'utente corrente per i confronti
         const me = await getMe();
         setCurrentUserId(extractId(me));
+
+        // Carica il profilo target
+        const targetUser = await loadUserProfile();
+        const targetUserId = extractId(targetUser);
+
+        if (!targetUserId) {
+          setLoading(false);
+          return;
+        }
+
+        // Carica artworks e dati follow
+        await Promise.all([
+          loadUserArtworks(targetUserId),
+          loadFollowData(targetUserId),
+        ]);
       } catch (e) {
-        console.log("Impossibile ottenere l'utente corrente:", e);
-      }
-
-      const targetUser = await loadUserProfile();
-      const targetUserId = extractId(targetUser);
-      if (!targetUserId) {
+        console.error("Errore nel caricamento generale:", e);
+        setError("Errore nel caricamento dei dati");
+      } finally {
         setLoading(false);
-        return;
       }
-
-      await Promise.all([
-        loadUserArtworks(targetUserId),
-        loadFollowData(targetUserId),
-      ]);
-
-      setLoading(false);
     };
 
     loadData();
@@ -142,12 +154,19 @@ const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
 
   // ─────────────── sync isFollowing con followers ───────────────
   useEffect(() => {
-    if (!currentUserId || !userProfile) {
+    if (!currentUserId || !userProfile || isOwnProfile) {
       setIsFollowing(false);
       return;
     }
+
+    // Controlla se l'utente corrente sta seguendo il profilo visualizzato
     setIsFollowing(followers.some((f) => extractId(f) === currentUserId));
-  }, [followers, currentUserId, userProfile]);
+  }, [followers, currentUserId, userProfile, isOwnProfile]);
+
+  // ─────────────── derived state ───────────────
+  const targetUserId = extractId(userProfile);
+  const isViewingOwnProfile =
+    isOwnProfile || (currentUserId && targetUserId === currentUserId);
 
   // ─────────────── render ───────────────
   if (loading) {
@@ -179,8 +198,6 @@ const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
       </div>
     );
   }
-
-  const targetUserId = extractId(userProfile);
 
   const getAvatar = () =>
     userProfile.profileImage ? (
@@ -225,7 +242,8 @@ const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
         </div>
 
         <div className="action-buttons">
-          {!isOwnProfile && targetUserId !== currentUserId && (
+          {/* Mostra il pulsante follow solo se NON è il proprio profilo */}
+          {!isViewingOwnProfile && (
             <button
               onClick={handleFollowToggle}
               disabled={actionLoading}
@@ -233,7 +251,12 @@ const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
                 actionLoading ? "loading" : ""
               }`}
             >
-              {actionLoading ? "..." : isFollowing ? "Following" : "Follow"}
+              <span className="label-default">
+                {actionLoading ? "…" : isFollowing ? "Following" : "Follow"}
+              </span>
+              {isFollowing && !actionLoading && (
+                <span className="label-unfollow">Unfollow</span>
+              )}
             </button>
           )}
           <button className="more-btn">
@@ -289,7 +312,7 @@ const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
         ) : (
           <div className="empty-state">
             <p>
-              {isOwnProfile
+              {isViewingOwnProfile
                 ? "Non hai ancora caricato nessuna opera."
                 : "Questo utente non ha ancora caricato opere."}
             </p>

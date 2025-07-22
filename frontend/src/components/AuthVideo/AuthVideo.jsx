@@ -1,3 +1,5 @@
+import "./AuthVideo.css";
+
 import { useEffect, useRef } from "react";
 
 const AuthVideo = ({ videoSrc, playbackRate = 1.75 }) => {

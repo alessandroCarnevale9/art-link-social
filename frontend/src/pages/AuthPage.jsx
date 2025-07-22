@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import Login from "./Login";
 import Signup from "./Signup";
-import AuthVideo from "../components/AuthVideo";
+import AuthVideo from "../components/AuthVideo/AuthVideo";
 import videoBg from "../assets/clip.mp4";
 import "./css/AuthPage.css";
 

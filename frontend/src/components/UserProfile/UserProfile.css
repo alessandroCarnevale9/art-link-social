@@ -1,15 +1,21 @@
+/*-----------------------------------------------
+  User Profile – foglio di stile completo
+------------------------------------------------*/
+
+/* ===== Layout principale ===== */
 .user-profile {
     max-width: 1200px;
     margin: 0 auto;
     padding: 20px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #333;
 }
 
-/* Header Styles */
+/* ===== Header ===== */
 .profile-header {
     text-align: center;
-    padding: 40px 20px;
-    background: #fafafa;
-    border-radius: 12px;
+    padding: 30px 20px;
+    border-bottom: 1px solid #eaeaea;
     margin-bottom: 30px;
 }
 
@@ -18,13 +24,13 @@
     height: 120px;
     margin: 0 auto 20px;
     border-radius: 50%;
+    background: linear-gradient(135deg, #6e8efb, #a777e3);
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    font-size: 36px;
+    font-size: 48px;
     font-weight: bold;
+    color: #fff;
     overflow: hidden;
 }
 
@@ -32,176 +38,210 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    border-radius: 50%;
-}
-
-.avatar-text {
-    font-size: 36px;
-    font-weight: bold;
 }
 
 .username {
     font-size: 28px;
-    margin: 0 0 10px;
-    color: #2c3e50;
     font-weight: 600;
+    margin-bottom: 10px;
+    color: #222;
 }
 
 .user-bio {
-    color: #7f8c8d;
+    max-width: 600px;
+    margin: 0 auto 20px;
     font-size: 16px;
     line-height: 1.5;
-    margin: 0 0 20px;
-    max-width: 600px;
-    margin-left: auto;
-    margin-right: auto;
+    color: #555;
 }
 
+/* ===== Stats ===== */
 .stats {
     display: flex;
     justify-content: center;
     gap: 30px;
-    margin: 20px 0 30px;
-    flex-wrap: wrap;
+    margin-bottom: 25px;
 }
 
 .stat-item {
     font-size: 16px;
-    color: #7f8c8d;
+    color: #666;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.stat-item:hover {
+    color: #333;
 }
 
 .stat-number {
-    font-weight: bold;
-    color: #2c3e50;
+    font-weight: 700;
+    color: #222;
     font-size: 18px;
 }
 
+/* ===== Action Buttons ===== */
 .action-buttons {
     display: flex;
     justify-content: center;
     gap: 15px;
-    align-items: center;
 }
 
+/*-----------------------------
+  FOLLOW BUTTON
+------------------------------*/
 .follow-btn {
-    background: #3498db;
-    color: white;
-    border: none;
-    padding: 12px 24px;
-    border-radius: 25px;
-    font-size: 16px;
+    /* dimensioni fisse (niente salti) */
+    width: 120px;
+    height: 36px;
+
+    /* layout interno */
+    position: relative;
+    /* per le label sovrapposte */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    /* nasconde la 2ª label quando opacità 0 */
+
+    /* stile base */
+    border: 1px solid transparent;
+    border-radius: 20px;
     font-weight: 600;
+    font-size: 14px;
+    white-space: nowrap;
     cursor: pointer;
-    transition: all 0.3s ease;
-    min-width: 120px;
+    background: hsla(204, 100%, 48%, 0.70);
+    /* blu */
+    color: #fff;
+    transition: background-color 0.3s ease, transform 0.15s ease;
 }
 
-.follow-btn:hover {
-    background: #2980b9;
-    transform: translateY(-2px);
+/* ------ Stati ------ */
+
+/* non seguito (default) */
+.follow-btn:not(.following):not(.loading):hover {
+    background: hsla(204, 100%, 48%, 0.80);
 }
 
+/* già seguito */
 .follow-btn.following {
-    background: #95a5a6;
+    background: rgba(0, 0, 0, 0.70);
 }
 
 .follow-btn.following:hover {
-    background: #e74c3c;
+    background: rgba(0, 0, 0, 0.80);
 }
 
-.follow-btn.following:hover::after {
-    content: "Unfollow";
-}
-
-.follow-btn.loading {
-    opacity: 0.7;
-    cursor: not-allowed;
-}
-
+/* loading / disabled */
+.follow-btn.loading,
 .follow-btn:disabled {
-    opacity: 0.6;
+    background: #6c757d;
     cursor: not-allowed;
     transform: none;
 }
 
+/* ------ Label sovrapposte ------ */
+.follow-btn .label-default,
+.follow-btn .label-unfollow {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.2s ease;
+}
+
+/* “Unfollow” invisibile finché non si fa hover */
+.follow-btn .label-unfollow {
+    opacity: 0;
+}
+
+/* cross‑fade in hover, solo se siamo già following e non loading */
+.follow-btn.following:not(.loading):hover .label-default {
+    opacity: 0;
+}
+
+.follow-btn.following:not(.loading):hover .label-unfollow {
+    opacity: 1;
+}
+
+/* ---- puntini animati opzionali ---- */
+.loading-dots {
+    display: inline-block;
+    width: 40px;
+    text-align: center;
+    letter-spacing: 2px;
+}
+
+/*-----------------------------
+  MORE BUTTON (•••)
+------------------------------*/
 .more-btn {
-    background: #ecf0f1;
-    border: none;
-    width: 48px;
-    height: 48px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
+    background: #f0f0f0;
+    border: none;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: background-color 0.2s;
 }
 
 .more-btn:hover {
-    background: #d5dbdb;
-    transform: translateY(-2px);
+    background: #e0e0e0;
 }
 
-.more-btn .icon {
-    font-size: 20px;
-    color: #7f8c8d;
+.icon {
+    font-size: 18px;
 }
 
-/* Content Section */
+/* ===== Artworks Grid ===== */
 .content-section {
-    margin-top: 30px;
+    padding: 0 10px;
 }
 
 .artworks-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 20px;
-    padding: 20px 0;
 }
 
 .artwork-item {
-    cursor: pointer;
-    border-radius: 12px;
+    border-radius: 8px;
     overflow: hidden;
-    background: white;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    transition: all 0.3s ease;
-    position: relative;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    cursor: pointer;
+    background: #fff;
 }
 
 .artwork-item:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
-}
-
-.artwork-item:focus {
-    outline: 3px solid #3498db;
-    outline-offset: 2px;
+    transform: translateY(-5px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
 }
 
 .artwork-container {
     position: relative;
-    overflow: hidden;
 }
 
 .artwork-image {
     width: 100%;
+    display: block;
     object-fit: cover;
-    transition: transform 0.3s ease;
-}
-
-.artwork-item:hover .artwork-image {
-    transform: scale(1.05);
+    background: #f8f8f8;
 }
 
 .artwork-placeholder {
     width: 100%;
-    background: #ecf0f1;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #7f8c8d;
-    font-weight: 600;
+    background: linear-gradient(135deg, #f5f7fa, #e4e7eb);
+    color: #777;
+    font-weight: 500;
     font-size: 16px;
     text-align: center;
     padding: 20px;
@@ -209,81 +249,79 @@
 
 .artwork-overlay {
     position: absolute;
+    inset-inline: 0;
     bottom: 0;
-    left: 0;
-    right: 0;
-    background: linear-gradient(to top,
-            rgba(0, 0, 0, 0.8) 0%,
-            rgba(0, 0, 0, 0.4) 50%,
-            transparent 100%);
-    color: white;
-    padding: 20px;
-    transform: translateY(100%);
-    transition: transform 0.3s ease;
+    padding: 20px 15px 15px;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
+    color: #fff;
+    opacity: 0;
+    transition: opacity 0.3s ease;
 }
 
 .artwork-item:hover .artwork-overlay {
-    transform: translateY(0);
+    opacity: 1;
 }
 
 .artwork-title {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 600;
-    margin: 0 0 5px;
+    margin-bottom: 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .artwork-medium {
-    font-size: 14px;
+    font-size: 13px;
+    opacity: 0.8;
     margin: 0;
-    opacity: 0.9;
 }
 
-/* States */
+/* ===== Empty / Loading / Error ===== */
+.empty-state,
 .loading-placeholder,
 .error-message {
     text-align: center;
-    padding: 40px;
-    color: #7f8c8d;
-    font-size: 18px;
+    padding: 50px 20px;
+    font-size: 16px;
+}
+
+.empty-state {
+    color: #777;
+}
+
+.loading-placeholder {
+    color: #666;
 }
 
 .error-message {
     color: #e74c3c;
-    background: #fdf2f2;
-    border: 1px solid #fecaca;
-    border-radius: 8px;
-    margin: 20px 0;
 }
 
-.empty-state {
-    text-align: center;
-    padding: 60px 20px;
-    color: #7f8c8d;
-}
-
-.empty-state p {
-    font-size: 18px;
-    margin: 0;
-}
-
-/* Responsive Design */
+/* ===== Responsive ===== */
 @media (max-width: 768px) {
-    .user-profile {
-        padding: 15px;
+    .stats {
+        gap: 20px;
     }
 
-    .profile-header {
-        padding: 30px 15px;
+    .stat-item {
+        font-size: 14px;
     }
 
+    .stat-number {
+        font-size: 16px;
+    }
+
+    .artworks-grid {
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    }
+}
+
+@media (max-width: 480px) {
     .avatar {
         width: 100px;
         height: 100px;
-        font-size: 30px;
-    }
-
-    .avatar-text {
-        font-size: 30px;
+        font-size: 36px;
     }
 
     .username {
@@ -291,31 +329,10 @@
     }
 
     .stats {
-        gap: 20px;
-    }
-
-    .action-buttons {
-        flex-direction: column;
-        gap: 12px;
-    }
-
-    .follow-btn {
-        width: 200px;
-    }
-
-    .artworks-grid {
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
         gap: 15px;
     }
-}
 
-@media (max-width: 480px) {
     .artworks-grid {
         grid-template-columns: 1fr;
-    }
-
-    .stats {
-        flex-direction: column;
-        gap: 10px;
     }
 }
