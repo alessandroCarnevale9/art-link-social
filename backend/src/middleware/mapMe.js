@@ -1,5 +1,6 @@
 // middleware che mappa l'id dell'utente loggato in req.params.id
 module.exports = (req, res, next) => {
+  console.log('mapMe start params.id=', req.params.id, 'userId=', req.userId);
   if (!req.userId) {
     return res.status(401).json({ message: "Unauthorized" });
   }
@@ -9,5 +10,6 @@ module.exports = (req, res, next) => {
     req.params.id = req.userId;
   }
 
+  console.log('mapMe end params.id=', req.params.id, 'userId=', req.userId);
   next();
 };

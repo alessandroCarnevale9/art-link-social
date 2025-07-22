@@ -41,6 +41,7 @@ app.use("/api/feed", require("./routes/feedRoutes"));
 app.use("/api/notifications", require("./routes/notificationRoutes"));
 app.use("/api/reports", require("./routes/reportRoutes"));
 app.use("/api/stats", require("./routes/statsRoutes"));
+app.use("/api/search", require("./routes/searchRoutes"));
 
 // Global error handler
 app.use(errorHandler);

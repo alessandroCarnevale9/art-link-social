@@ -48,6 +48,3 @@ router.use("/:id", followRoutes);
 router.use("/:id", favoriteRoutes);
 
 module.exports = router;
-
-// Quando toccherà gestire queste situazioni lato frontend guardare
-// MERN Authentication Tutorial #15 ~ Net Ninja

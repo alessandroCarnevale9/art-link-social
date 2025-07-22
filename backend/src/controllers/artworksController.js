@@ -31,8 +31,13 @@ const getAllArtworks = asyncHandler(async (req, res) => {
   const match = {};
   if (title) match.title = { $regex: title, $options: "i" };
   if (tag) match.tags = tag;
-  if (category) match.categories = mongoose.Types.ObjectId(category);
-  if (artistId) match.artistId = mongoose.Types.ObjectId(artistId);
+  if (category) {
+    // usa new per creare correttamente l'ObjectId
+    match.categories = new mongoose.Types.ObjectId(category);
+  }
+  if (artistId) {
+    match.artistId = new mongoose.Types.ObjectId(artistId);
+  }
   if (artworkPeriod) match.artworkPeriod = artworkPeriod;
 
   const pipeline = [
@@ -67,12 +72,9 @@ const getArtworkById = asyncHandler(async (req, res) => {
   const { id } = req.params;
   let matchCondition;
 
-  // If id is a 24-char hex string, treat as ObjectId
   if (mongoose.Types.ObjectId.isValid(id) && id.length === 24) {
     matchCondition = { _id: new mongoose.Types.ObjectId(id) };
-  }
-  // Else if id is numeric, treat as externalId
-  else if (!isNaN(parseInt(id, 10))) {
+  } else if (!isNaN(parseInt(id, 10))) {
     matchCondition = { externalId: parseInt(id, 10) };
   } else {
     throw new ApiError(400, "Invalid artwork identifier.");

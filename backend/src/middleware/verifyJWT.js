@@ -3,6 +3,7 @@ const asyncHandler = require("express-async-handler");
 const ApiError = require("../utils/ApiError");
 
 const verifyJWT = asyncHandler(async (req, res, next) => {
+  console.log('verifyJWT start');
   const authHeader = req.headers.authorization || req.headers.Authorization;
   if (!authHeader?.startsWith("Bearer "))
     throw new ApiError(401, "Missing token");
@@ -26,6 +27,8 @@ const verifyJWT = asyncHandler(async (req, res, next) => {
   req.userId = decoded.UserInfo.id;
   req.userEmail = decoded.UserInfo.email;
   req.userRole = decoded.UserInfo.role;
+
+  console.log('verifyJWT success userId=', decoded?.userId);
 
   next();
 });
