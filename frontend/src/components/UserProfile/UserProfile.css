@@ -91,57 +91,44 @@
   FOLLOW BUTTON
 ------------------------------*/
 .follow-btn {
-    /* dimensioni fisse (niente salti) */
+    /* dimensioni e layout */
     width: 120px;
     height: 36px;
-
-    /* layout interno */
-    position: relative;
-    /* per le label sovrapposte */
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    overflow: hidden;
-    /* nasconde la 2ª label quando opacità 0 */
+    position: relative;
 
-    /* stile base */
-    border: 1px solid transparent;
+    /* aspetto base */
+    border: none;
     border-radius: 20px;
+    background: hsla(204, 100%, 48%, 0.7);
+    color: #fff;
     font-weight: 600;
     font-size: 14px;
     white-space: nowrap;
     cursor: pointer;
-    background: hsla(204, 100%, 48%, 0.70);
-    /* blu */
-    color: #fff;
-    transition: background-color 0.3s ease, transform 0.15s ease;
+
+    /* transizioni */
+    transition: background-color 0.3s ease, transform 0.15s ease, opacity 0.2s ease;
+    opacity: 1;
 }
 
-/* ------ Stati ------ */
-
-/* non seguito (default) */
-.follow-btn:not(.following):not(.loading):hover {
-    background: hsla(204, 100%, 48%, 0.80);
+/* hover quando non segui */
+.follow-btn:hover {
+    background: hsla(204, 100%, 48%, 0.8);
 }
 
-/* già seguito */
+/* stato “following” */
 .follow-btn.following {
-    background: rgba(0, 0, 0, 0.70);
+    background: rgba(0, 0, 0, 0.7);
 }
 
 .follow-btn.following:hover {
-    background: rgba(0, 0, 0, 0.80);
+    background: rgba(0, 0, 0, 0.8);
 }
 
-/* loading / disabled */
-.follow-btn.loading,
-.follow-btn:disabled {
-    background: #6c757d;
-    cursor: not-allowed;
-    transform: none;
-}
-
-/* ------ Label sovrapposte ------ */
+/* label sovrapposte */
 .follow-btn .label-default,
 .follow-btn .label-unfollow {
     position: absolute;
@@ -152,26 +139,23 @@
     transition: opacity 0.2s ease;
 }
 
-/* “Unfollow” invisibile finché non si fa hover */
+/* default: mostra “Follow” */
+.follow-btn .label-default {
+    opacity: 1;
+}
+
+/* default: nasconde “Unfollow” */
 .follow-btn .label-unfollow {
     opacity: 0;
 }
 
-/* cross‑fade in hover, solo se siamo già following e non loading */
-.follow-btn.following:not(.loading):hover .label-default {
+/* al hover in stato following, scambia le label */
+.follow-btn.following:hover .label-default {
     opacity: 0;
 }
 
-.follow-btn.following:not(.loading):hover .label-unfollow {
+.follow-btn.following:hover .label-unfollow {
     opacity: 1;
-}
-
-/* ---- puntini animati opzionali ---- */
-.loading-dots {
-    display: inline-block;
-    width: 40px;
-    text-align: center;
-    letter-spacing: 2px;
 }
 
 /*-----------------------------

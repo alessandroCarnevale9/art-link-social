@@ -32,19 +32,11 @@ const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
   // ─────────────── helpers ───────────────
   const loadUserProfile = useCallback(async () => {
     try {
-      let data;
-
-      if (isOwnProfile) {
-        // If it's own profile, always load getMe()
-        data = await getMe();
-      } else if (paramUserId) {
-        // If it's another profile and we have the ID, load it
-        data = await getUserById(paramUserId);
-      } else {
-        // If it's not own profile but we don't have ID, error
-        throw new Error("Missing user ID");
-      }
-
+      const data = isOwnProfile
+        ? await getMe()
+        : paramUserId
+        ? await getUserById(paramUserId)
+        : (() => { throw new Error("Missing user ID"); })();
       setUserProfile(data);
       return data;
     } catch (err) {
@@ -99,13 +91,11 @@ const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
       } else {
         await followUser(targetUserId);
         setIsFollowing(true);
-        try {
-          const me = await getMe();
-          const meId = extractId(me);
-          setFollowers((prev) =>
-            prev.some((f) => extractId(f) === meId) ? prev : [...prev, me]
-          );
-        } catch {}
+        const me = await getMe();
+        const meId = extractId(me);
+        setFollowers((prev) =>
+          prev.some((f) => extractId(f) === meId) ? prev : [...prev, me]
+        );
       }
     } catch (err) {
       console.error("Error in follow operation:", err);
@@ -121,55 +111,40 @@ const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
     const loadData = async () => {
       setLoading(true);
       setError(null);
-
       try {
-        // Always load current user for comparisons
         const me = await getMe();
         setCurrentUserId(extractId(me));
-
-        // Load target profile
         const targetUser = await loadUserProfile();
         const targetUserId = extractId(targetUser);
-
-        if (!targetUserId) {
-          setLoading(false);
-          return;
+        if (targetUserId) {
+          await Promise.all([
+            loadUserArtworks(targetUserId),
+            loadFollowData(targetUserId),
+          ]);
         }
-
-        // Load artworks and follow data
-        await Promise.all([
-          loadUserArtworks(targetUserId),
-          loadFollowData(targetUserId),
-        ]);
       } catch (e) {
-        console.error("Error in general loading:", e);
+        console.error("Error loading data:", e);
         setError("Error loading data");
       } finally {
         setLoading(false);
       }
     };
-
     loadData();
   }, [paramUserId, isOwnProfile, loadUserProfile]);
 
-  // ─────────────── sync isFollowing with followers ───────────────
+  // ─────────────── sync isFollowing ───────────────
   useEffect(() => {
     if (!currentUserId || !userProfile || isOwnProfile) {
       setIsFollowing(false);
-      return;
+    } else {
+      setIsFollowing(
+        followers.some((f) => extractId(f) === currentUserId)
+      );
     }
-
-    // Check if current user is following the displayed profile
-    setIsFollowing(followers.some((f) => extractId(f) === currentUserId));
   }, [followers, currentUserId, userProfile, isOwnProfile]);
 
-  // ─────────────── derived state ───────────────
-  const targetUserId = extractId(userProfile);
-  const isViewingOwnProfile =
-    isOwnProfile || (currentUserId && targetUserId === currentUserId);
-
   // ─────────────── render ───────────────
-  if (loading) {
+  if (loading)
     return (
       <div className="user-profile">
         <div className="profile-header">
@@ -177,9 +152,7 @@ const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
         </div>
       </div>
     );
-  }
-
-  if (error) {
+  if (error)
     return (
       <div className="user-profile">
         <div className="profile-header">
@@ -187,9 +160,7 @@ const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
         </div>
       </div>
     );
-  }
-
-  if (!userProfile) {
+  if (!userProfile)
     return (
       <div className="user-profile">
         <div className="profile-header">
@@ -197,7 +168,6 @@ const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
         </div>
       </div>
     );
-  }
 
   const getAvatar = () =>
     userProfile.profileImage ? (
@@ -208,22 +178,28 @@ const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
       />
     ) : (
       <span className="avatar-text">
-        {(userProfile.firstName?.[0] || "") +
-          (userProfile.lastName?.[0] || "") || "U"}
+        {((userProfile.firstName?.[0] || "") +
+          (userProfile.lastName?.[0] || "")) ||
+          "U"}
       </span>
     );
 
   const getDisplayName = () =>
     userProfile.firstName || userProfile.lastName
-      ? `${userProfile.firstName || ""} ${userProfile.lastName || ""}`.trim()
+      ? `${userProfile.firstName || ""} ${
+          userProfile.lastName || ""
+        }`.trim()
       : userProfile.email?.split("@")[0] || "User";
 
   const handleArtworkClick = (id) =>
     onArtworkClick ? onArtworkClick(id) : console.log(`Navigate to ${id}`);
 
+  const isViewingOwnProfile =
+    isOwnProfile ||
+    (currentUserId && extractId(userProfile) === currentUserId);
+
   return (
     <div className="user-profile">
-      {/* header */}
       <div className="profile-header">
         <div className="avatar">{getAvatar()}</div>
         <h1 className="username">{getDisplayName()}</h1>
@@ -242,21 +218,15 @@ const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
         </div>
 
         <div className="action-buttons">
-          {/* Show follow button only if NOT own profile */}
           {!isViewingOwnProfile && (
             <button
               onClick={handleFollowToggle}
-              disabled={actionLoading}
-              className={`follow-btn ${isFollowing ? "following" : ""} ${
-                actionLoading ? "loading" : ""
-              }`}
+              className={`follow-btn ${isFollowing ? "following" : ""}`}
             >
               <span className="label-default">
-                {actionLoading ? "…" : isFollowing ? "Following" : "Follow"}
+                {isFollowing ? "Following" : "Follow"}
               </span>
-              {isFollowing && !actionLoading && (
-                <span className="label-unfollow">Unfollow</span>
-              )}
+              <span className="label-unfollow">Unfollow</span>
             </button>
           )}
           <button className="more-btn">
@@ -265,7 +235,6 @@ const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
         </div>
       </div>
 
-      {/* artworks */}
       <div className="content-section">
         {artworks.length ? (
           <div className="artworks-grid">
@@ -275,7 +244,8 @@ const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
                 className="artwork-item"
                 onClick={() => handleArtworkClick(a._id)}
                 onKeyDown={(e) =>
-                  ["Enter", " "].includes(e.key) && handleArtworkClick(a._id)
+                  ["Enter", " "].includes(e.key) &&
+                  handleArtworkClick(a._id)
                 }
                 tabIndex={0}
                 role="button"
@@ -303,7 +273,9 @@ const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
                   )}
                   <div className="artwork-overlay">
                     <h3 className="artwork-title">{a.title}</h3>
-                    {a.medium && <p className="artwork-medium">{a.medium}</p>}
+                    {a.medium && (
+                      <p className="artwork-medium">{a.medium}</p>
+                    )}
                   </div>
                 </div>
               </div>

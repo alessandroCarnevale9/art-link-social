@@ -60,17 +60,21 @@ const ImageDetail = () => {
 
       // 3) Carica commenti
       const rawComments = await getComments(data._id);
+
+      console.log(`RAW COMMENTS --->\t ${JSON.stringify(rawComments)}`);
+
       const enriched = rawComments
         .map((c) => ({
           ...c,
           authorId: c.author?._id || c.authorId,
           author: {
             username:
-              c.author?.userData?.firstName || c.author?.username || "Unknown",
+              c.author?.firstName || c.author?.username || "Unknown",
           },
         }))
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       setComments(enriched);
+      console.log(`ENRICHED --->\t ${JSON.stringify(enriched)}`);
     } catch (err) {
       console.error("Error loading artwork:", err);
       setError("Unable to load image. Please try again.");
