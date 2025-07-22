@@ -30,9 +30,17 @@ app.get("/server-status", (req, res) => {
 // MET Museum endpoints
 app.use("/api/met", require("./routes/metRoutes"));
 
-// Other routes
+// Auth routes
 app.use("/api/auth", require("./routes/authRoutes"));
+
+// IMPORTANTE: Route più specifiche PRIMA di quelle generiche
+// Route per i favoriti (deve essere prima di /api/users/:id)
+app.use("/api/users/:id/favorites", require("./routes/favoriteRoutes"));
+
+// Route per gli utenti
 app.use("/api/users", require("./routes/userRoutes"));
+
+// Altre route
 app.use("/api/artists", require("./routes/artistRoutes"));
 app.use("/api/categories", require("./routes/categoryRoutes"));
 app.use("/api/artworks/:id/comments", require("./routes/commentRoutes"));

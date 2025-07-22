@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
-const Schema = mongoose.Schema;
+const { Schema } = mongoose;
+
 require("./FavoriteModel");
 require("./CommentModel");
 
@@ -11,28 +12,30 @@ const artworkSchema = new Schema(
       sparse: true,
     },
 
+    /* --- dati principali --- */
     title: {
       type: String,
       required: true,
       trim: true,
     },
+    primaryImage: String,
+    primaryImageSmall: String,
     publishDate: Date,
     artworkPeriod: String,
     artworkCulture: String,
     linkResource: String,
     medium: String,
     dimensions: String,
+    artistDisplayName: String,
+
+    /* --- provenienza --- */
     origin: {
       type: String,
       enum: ["AdminUploaded", "UserUploaded", "MET"],
       required: true,
     },
-    externalId: {
-      // l’objectID del MET, se origin==="MET"
-      type: Number,
-      unique: true,
-      sparse: true,
-    },
+
+    /* --- relazioni --- */
     authorId: {
       type: Schema.Types.ObjectId,
       ref: "User",
@@ -42,18 +45,26 @@ const artworkSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: "Artist",
     },
-    tags: [String],
     categories: [
       {
         type: Schema.Types.ObjectId,
         ref: "Category",
       },
     ],
+
+    /* --- altre info --- */
+    tags: [String],
     description: {
       type: String,
       trim: true,
       maxlength: 500,
       default: "",
+    },
+
+    /* --- contatori persistenti --- */
+    favoritesCount: {
+      type: Number,
+      default: 0,
     },
   },
   {
@@ -61,31 +72,19 @@ const artworkSchema = new Schema(
   }
 );
 
-// Virtual populate per i commenti
+/* ---------- VIRTUAL ---------- */
+/* commenti */
 artworkSchema.virtual("comments", {
   ref: "Comment",
   localField: "_id",
   foreignField: "artworkId",
   justOne: false,
 });
-
-// Virtual populate per i favoriti
-artworkSchema.virtual("favorites", {
-  ref: "Favorite", // o il model che usi per le preferenze
-  localField: "_id",
-  foreignField: "artwork",
-  justOne: false,
-});
-
-// Virtual counts
 artworkSchema.virtual("commentsCount").get(function () {
   return this.comments?.length ?? 0;
 });
-artworkSchema.virtual("favoritesCount").get(function () {
-  return this.favorites?.length ?? 0;
-});
 
-// Abilita i virtual anche in toJSON
+/* ---------- OUTPUT ---------- */
 artworkSchema.set("toObject", { virtuals: true });
 artworkSchema.set("toJSON", { virtuals: true });
 

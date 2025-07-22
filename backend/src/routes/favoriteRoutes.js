@@ -1,19 +1,25 @@
 const express = require("express");
-const router = express.Router({ mergeParams: true });
-const verifyJWT = require("../middleware/verifyJWT");
+const router = express.Router({ mergeParams: true }); // IMPORTANTE: mergeParams per accedere a :id
+const {
+  addFavorite,
+  removeFavorite,
+  getFavorites,
+} = require("../controllers/favoritesController");
+const authMiddleware = require("../middleware/verifyJWT");
 const mapMe = require("../middleware/mapMe");
-const ctrl = require("../controllers/favoritesController");
 
-// Proteggi tutte le rotte
-router.use(verifyJWT);
+// Applica l'autenticazione e mapMe a tutte le route nell'ordine corretto
+router.use(authMiddleware);
 router.use(mapMe);
 
-// GET    /api/users/:id/favorites
-router.get("/favorites", ctrl.getFavorites);
+// Route per i favoriti
+// GET /api/users/:id/favorites
+router.get("/", getFavorites);
 
-// POST   /api/users/:id/favorites/:artworkId
-router.post("/favorites/:artworkId", ctrl.addFavorite);
+// POST /api/users/:id/favorites/:artworkId
+router.post("/:artworkId", addFavorite);
+
 // DELETE /api/users/:id/favorites/:artworkId
-router.delete("/favorites/:artworkId", ctrl.removeFavorite);
+router.delete("/:artworkId", removeFavorite);
 
 module.exports = router;

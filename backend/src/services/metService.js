@@ -1,6 +1,6 @@
-// backend/src/services/metService.js
 const Artwork = require("../models/ArtworkModel");
-const fetch = require("node-fetch"); // o global.fetch se configurato
+const fetch = require("node-fetch");
+
 const MET_BASE = "https://collectionapi.metmuseum.org/public/collection/v1";
 
 async function getOrCreateMetArtwork(externalId, authorId) {
@@ -15,8 +15,8 @@ async function getOrCreateMetArtwork(externalId, authorId) {
     err.status = response.status;
     throw err;
   }
-  const data = await response.json();
 
+  const data = await response.json();
   if (!data?.objectID) {
     const err = new Error("MET object not found");
     err.status = 404;
@@ -27,21 +27,31 @@ async function getOrCreateMetArtwork(externalId, authorId) {
   const createData = {
     title: data.title || "Untitled",
     origin: "MET",
-    externalId: data.objectID,      // ← qui!
-    authorId,                       // deve essere passato al service
+    externalId: data.objectID,
+    authorId,
+    // Fix: Check for both undefined and empty string
+    artistDisplayName: (data.artistDisplayName && data.artistDisplayName.trim()) || "Unknown artist",
     linkResource: data.primaryImageSmall || "",
     medium: data.medium || "",
     dimensions: data.dimensions || "",
+    artworkPeriod: data.period || "",
+    artworkCulture: data.culture || "",
+    tags: data.tags || [],
   };
 
   // 4) Publish date se parsabile
-  const date = new Date(data.objectDate);
-  if (!isNaN(date.valueOf())) {
-    createData.publishDate = date;
+  if (data.objectDate) {
+    const date = new Date(data.objectDate);
+    if (!isNaN(date.valueOf())) {
+      createData.publishDate = date;
+    }
   }
 
   // 5) Creo il documento
   art = await Artwork.create(createData);
+
+  console.log("ART --->\t", JSON.stringify(art));
+
   return art;
 }
 
