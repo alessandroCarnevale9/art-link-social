@@ -26,7 +26,7 @@ const GRID_GAP_PX = 20;
 const Gallery = () => {
   const { favorites, dispatch } = useContext(AuthContext);
 
-  console.log("gallery fav", favorites)
+  console.log("gallery fav", favorites);
 
   // Stati
   const [images, setImages] = useState([]);
@@ -34,7 +34,7 @@ const Gallery = () => {
   const [error, setError] = useState(null);
   const [currentQuery, setCurrentQuery] = useState("painting");
   const [offset, setOffset] = useState(0);
-  const [totalResults, setTotalResults] = useState(0);        // ← usato in header
+  const [totalResults, setTotalResults] = useState(0); // ← usato in header
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
 
@@ -67,7 +67,8 @@ const Gallery = () => {
     const grid = gridRef.current;
     if (!grid) return;
     const imgs = grid.querySelectorAll("img");
-    let loaded = 0, total = imgs.length;
+    let loaded = 0,
+      total = imgs.length;
     if (!total) {
       recalcMasonry();
       return;
@@ -115,12 +116,12 @@ const Gallery = () => {
   const loadArtworksProgressive = useCallback(
     async (query, reset = false, limit = 20) => {
       const req = { cancelled: false };
-      if (currentRequestRef.current)
-        currentRequestRef.current.cancelled = true;
+      if (currentRequestRef.current) currentRequestRef.current.cancelled = true;
       currentRequestRef.current = req;
 
       try {
-        let offsetLocal = 0, objectIds = [];
+        let offsetLocal = 0,
+          objectIds = [];
 
         if (reset) {
           setLoading(true);
@@ -156,10 +157,7 @@ const Gallery = () => {
 
         setHasMore(offsetLocal + limit < objectIds.length);
 
-        const slice = objectIds.slice(
-          offsetLocal,
-          offsetLocal + limit
-        );
+        const slice = objectIds.slice(offsetLocal, offsetLocal + limit);
         if (slice.length) {
           setPlaceholderCount(slice.length);
           setOccupiedPlaceholders([]);
@@ -185,8 +183,7 @@ const Gallery = () => {
           setProgressiveLoading(false);
           setPlaceholderCount(0);
         }
-        if (currentRequestRef.current === req)
-          currentRequestRef.current = null;
+        if (currentRequestRef.current === req) currentRequestRef.current = null;
       }
     },
     [offset, handleProgress]
@@ -195,8 +192,7 @@ const Gallery = () => {
   useEffect(() => {
     loadArtworksProgressive(currentQuery, true);
     return () => {
-      if (currentRequestRef.current)
-        currentRequestRef.current.cancelled = true;
+      if (currentRequestRef.current) currentRequestRef.current.cancelled = true;
     };
   }, [currentQuery]);
 
@@ -323,10 +319,7 @@ const Gallery = () => {
                 (o) => o.placeholderIndex === idx
               );
               return !occ ? (
-                <div
-                  key={`ph-${idx}`}
-                  className="placeholder-card grid-item"
-                />
+                <div key={`ph-${idx}`} className="placeholder-card grid-item" />
               ) : null;
             })}
           </div>
@@ -343,13 +336,15 @@ const Gallery = () => {
           )}
 
           {!loading && images.length && hasMore && !progressiveLoading && (
-            <button
-              onClick={loadMore}
-              disabled={loadingMore || progressiveLoading}
-              className="load-more-btn"
-            >
-              {loadingMore ? "Loading more..." : "Load More Artworks"}
-            </button>
+            <div className="load-more-container">
+              <button
+                onClick={loadMore}
+                disabled={loadingMore || progressiveLoading}
+                className="load-more-btn"
+              >
+                {loadingMore ? "Loading more..." : "Load More Artworks"}
+              </button>
+            </div>
           )}
           {!loading && !progressiveLoading && images.length && !hasMore && (
             <p className="end-message">

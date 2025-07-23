@@ -30,6 +30,14 @@ const NotificationsModal = ({ isOpen, onClose, onUnreadCountChange }) => {
     onConfirm: null,
   });
 
+  // Helper: filtered list based on filter
+  const filteredNotifications = notifications.filter((n) => {
+    if (filter === "all") return true;
+    if (filter === "unread") return !n.isRead;
+    // filter === 'read'
+    return n.isRead;
+  });
+
   // Load notifications
   const loadNotifications = async (page = 1, reset = false) => {
     setLoading(true);
@@ -37,27 +45,33 @@ const NotificationsModal = ({ isOpen, onClose, onUnreadCountChange }) => {
       const params = {
         page,
         limit: 10,
-        ...(filter !== "all" && { status: filter }),
+        // Usa unreadOnly=true solo per "unread"
+        ...(filter === "unread" && { unreadOnly: true }),
       };
+      console.log("Loading notifications with params:", params);
 
       const response = await getNotifications(params);
+      console.log("API response:", response);
 
+      const incoming = response.notifications || [];
       if (reset) {
-        setNotifications(response.notifications || []);
+        setNotifications(incoming);
       } else {
-        setNotifications((prev) => [
-          ...prev,
-          ...(response.notifications || []),
-        ]);
+        setNotifications((prev) => [...prev, ...incoming]);
       }
 
-      setTotalPages(response.totalPages || 1);
+      setTotalPages(response.pagination?.totalPages || 1);
       setCurrentPage(page);
 
-      // Update unread notifications count
-      const unreadCount =
-        response.notifications?.filter((n) => !n.isRead).length || 0;
-      onUnreadCountChange?.(response.totalUnread || unreadCount);
+      // Aggiorna il conteggio delle non lette (da endpoint o calcolo)
+      if (typeof response.unreadCount === "number") {
+        onUnreadCountChange?.(response.unreadCount);
+      } else {
+        const count = (response.notifications || []).filter(
+          (n) => !n.isRead
+        ).length;
+        onUnreadCountChange?.(count);
+      }
     } catch (error) {
       console.error("Error loading notifications:", error);
     } finally {
@@ -65,131 +79,129 @@ const NotificationsModal = ({ isOpen, onClose, onUnreadCountChange }) => {
     }
   };
 
-  // Load notifications when modal opens or filter changes
+  // Refresh on open or filter change
   useEffect(() => {
     if (isOpen) {
+      setCurrentPage(1);
       loadNotifications(1, true);
     }
   }, [isOpen, filter]);
 
-  // Mark notification as read
-  const handleMarkAsRead = async (notificationId) => {
-    setActionLoading((prev) => ({ ...prev, [notificationId]: "read" }));
-    try {
-      await markAsRead(notificationId);
-      setNotifications((prev) =>
-        prev.map((notif) =>
-          notif._id === notificationId ? { ...notif, isRead: true } : notif
-        )
-      );
-
-      // Update count
-      const unreadCount = notifications.filter(
-        (n) => !n.isRead && n._id !== notificationId
-      ).length;
-      onUnreadCountChange?.(unreadCount);
-    } catch (error) {
-      console.error("Error marking as read:", error);
-    } finally {
-      setActionLoading((prev) => ({ ...prev, [notificationId]: null }));
+  const handleFilterChange = (newFilter) => {
+    if (newFilter !== filter) {
+      setFilter(newFilter);
+      setNotifications([]);
+      setCurrentPage(1);
     }
   };
 
-  // Mark all as read
+  // Actions: mark read, delete, etc.
+  const handleMarkAsRead = async (id) => {
+    setActionLoading((prev) => ({ ...prev, [id]: "read" }));
+    try {
+      await markAsRead(id);
+      setNotifications((prev) =>
+        prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
+      );
+      // Update count
+      const unread = notifications.filter(
+        (n) => !n.isRead && n._id !== id
+      ).length;
+      onUnreadCountChange?.(unread);
+      if (filter === "unread") {
+        setNotifications((prev) => prev.filter((n) => n._id !== id));
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setActionLoading((prev) => ({ ...prev, [id]: null }));
+    }
+  };
+
   const handleMarkAllAsRead = async () => {
     setActionLoading((prev) => ({ ...prev, all: "readAll" }));
     try {
       await markAllAsRead();
-      setNotifications((prev) =>
-        prev.map((notif) => ({ ...notif, isRead: true }))
-      );
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
       onUnreadCountChange?.(0);
-    } catch (error) {
-      console.error("Error marking all as read:", error);
+      if (filter === "unread") setNotifications([]);
+    } catch (err) {
+      console.error(err);
     } finally {
       setActionLoading((prev) => ({ ...prev, all: null }));
     }
   };
 
-  // Delete notification
-  const handleDeleteNotification = async (notificationId) => {
+  const handleDeleteNotification = (id) => {
     setConfirmModal({
       isOpen: true,
       title: "Delete Notification",
       message: "Are you sure you want to delete this notification?",
-      onConfirm: () => confirmDeleteNotification(notificationId),
+      onConfirm: () => confirmDeleteNotification(id),
     });
   };
 
-  const confirmDeleteNotification = async (notificationId) => {
-    setConfirmModal({ ...confirmModal, isOpen: false });
-    setActionLoading((prev) => ({ ...prev, [notificationId]: "delete" }));
+  const confirmDeleteNotification = async (id) => {
+    setConfirmModal((m) => ({ ...m, isOpen: false }));
+    setActionLoading((prev) => ({ ...prev, [id]: "delete" }));
     try {
-      await deleteNotification(notificationId);
-      setNotifications((prev) =>
-        prev.filter((notif) => notif._id !== notificationId)
-      );
-
-      // Update count if it was unread
-      const deletedNotif = notifications.find((n) => n._id === notificationId);
-      if (deletedNotif && !deletedNotif.isRead) {
-        const unreadCount = notifications.filter(
-          (n) => !n.isRead && n._id !== notificationId
+      const wasUnread = notifications.some((n) => n._id === id && !n.isRead);
+      await deleteNotification(id);
+      setNotifications((prev) => prev.filter((n) => n._id !== id));
+      if (wasUnread) {
+        const remaining = notifications.filter(
+          (n) => !n.isRead && n._id !== id
         ).length;
-        onUnreadCountChange?.(unreadCount);
+        onUnreadCountChange?.(remaining);
       }
-    } catch (error) {
-      console.error("Error deleting notification:", error);
+    } catch (err) {
+      console.error(err);
     } finally {
-      setActionLoading((prev) => ({ ...prev, [notificationId]: null }));
+      setActionLoading((prev) => ({ ...prev, [id]: null }));
     }
   };
 
-  // Delete all notifications
-  const handleDeleteAll = async () => {
+  const handleDeleteAll = () => {
     setConfirmModal({
       isOpen: true,
       title: "Delete All Notifications",
       message:
         "Are you sure you want to delete all notifications? This action cannot be undone.",
-      onConfirm: () => confirmDeleteAll(),
+      onConfirm: confirmDeleteAll,
     });
   };
 
   const confirmDeleteAll = async () => {
-    setConfirmModal({ ...confirmModal, isOpen: false });
+    setConfirmModal((m) => ({ ...m, isOpen: false }));
     setActionLoading((prev) => ({ ...prev, all: "deleteAll" }));
     try {
       await deleteAllNotifications();
       setNotifications([]);
       onUnreadCountChange?.(0);
-    } catch (error) {
-      console.error("Error deleting all notifications:", error);
+    } catch (err) {
+      console.error(err);
     } finally {
       setActionLoading((prev) => ({ ...prev, all: null }));
     }
   };
 
-  // Load more notifications
   const loadMore = () => {
-    if (currentPage < totalPages && !loading) {
+    if (!loading && currentPage < totalPages) {
       loadNotifications(currentPage + 1, false);
     }
   };
 
-  // Format date
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return "Now";
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
+    const diff = now - date;
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "Now";
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(diff / 3600000);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(diff / 86400000);
+    if (days < 7) return `${days}d ago`;
     return date.toLocaleDateString("en-US");
   };
 
@@ -200,8 +212,7 @@ const NotificationsModal = ({ isOpen, onClose, onUnreadCountChange }) => {
       <div className="notifications-modal" onClick={(e) => e.stopPropagation()}>
         <div className="notifications-header">
           <h3>
-            <FaBell className="header-icon" />
-            Notifications
+            <FaBell className="header-icon" /> Notifications
           </h3>
           <button className="close-btn" onClick={onClose}>
             <FaTimes />
@@ -211,19 +222,19 @@ const NotificationsModal = ({ isOpen, onClose, onUnreadCountChange }) => {
         <div className="notifications-filters">
           <button
             className={filter === "all" ? "active" : ""}
-            onClick={() => setFilter("all")}
+            onClick={() => handleFilterChange("all")}
           >
             All
           </button>
           <button
             className={filter === "unread" ? "active" : ""}
-            onClick={() => setFilter("unread")}
+            onClick={() => handleFilterChange("unread")}
           >
             Unread
           </button>
           <button
             className={filter === "read" ? "active" : ""}
-            onClick={() => setFilter("read")}
+            onClick={() => handleFilterChange("read")}
           >
             Read
           </button>
@@ -233,36 +244,42 @@ const NotificationsModal = ({ isOpen, onClose, onUnreadCountChange }) => {
           <button
             className="action-btn mark-all"
             onClick={handleMarkAllAsRead}
-            disabled={actionLoading["all"] === "readAll"}
+            disabled={
+              actionLoading.all === "readAll" || notifications.length === 0
+            }
           >
-            <FaCheckDouble />
-            {actionLoading["all"] === "readAll"
-              ? "Marking..."
-              : "Mark all read"}
+            <FaCheckDouble />{" "}
+            {actionLoading.all === "readAll" ? "Marking..." : "Mark all read"}
           </button>
           <button
             className="action-btn delete-all"
             onClick={handleDeleteAll}
-            disabled={actionLoading["all"] === "deleteAll"}
+            disabled={
+              actionLoading.all === "deleteAll" || notifications.length === 0
+            }
           >
-            <FaTrash />
-            {actionLoading["all"] === "deleteAll"
-              ? "Deleting..."
-              : "Delete all"}
+            <FaTrash />{" "}
+            {actionLoading.all === "deleteAll" ? "Deleting..." : "Delete all"}
           </button>
         </div>
 
         <div className="notifications-list">
           {loading && notifications.length === 0 ? (
             <div className="loading">Loading notifications...</div>
-          ) : notifications.length === 0 ? (
+          ) : filteredNotifications.length === 0 ? (
             <div className="empty-state">
               <FaBell className="empty-icon" />
-              <p>No notifications found</p>
+              <p>
+                {filter === "all"
+                  ? "No notifications found"
+                  : filter === "unread"
+                  ? "No unread notifications"
+                  : "No read notifications"}
+              </p>
             </div>
           ) : (
             <>
-              {notifications.map((notification) => (
+              {filteredNotifications.map((notification) => (
                 <div
                   key={notification._id}
                   className={`notification-item ${
@@ -289,7 +306,6 @@ const NotificationsModal = ({ isOpen, onClose, onUnreadCountChange }) => {
                       )}
                     </div>
                   </div>
-
                   <div className="notification-actions">
                     {!notification.isRead && (
                       <button
@@ -325,17 +341,17 @@ const NotificationsModal = ({ isOpen, onClose, onUnreadCountChange }) => {
             </>
           )}
         </div>
-      </div>
 
-      <ConfirmModal
-        isOpen={confirmModal.isOpen}
-        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
-        onConfirm={confirmModal.onConfirm}
-        title={confirmModal.title}
-        message={confirmModal.message}
-        confirmText="Delete"
-        cancelText="Cancel"
-      />
+        <ConfirmModal
+          isOpen={confirmModal.isOpen}
+          onClose={() => setConfirmModal((m) => ({ ...m, isOpen: false }))}
+          onConfirm={confirmModal.onConfirm}
+          title={confirmModal.title}
+          message={confirmModal.message}
+          confirmText="Delete"
+          cancelText="Cancel"
+        />
+      </div>
     </div>
   );
 };
