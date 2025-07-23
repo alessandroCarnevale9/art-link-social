@@ -10,7 +10,7 @@ const notificationService = require("../services/notificationService");
 const getComments = asyncHandler(async (req, res) => {
   const artId = req.params.id;
 
-  // Verifica che l’artwork esista
+  // Verifica che l'artwork esista
   const exists = await Artwork.exists({ _id: artId });
   if (!exists) {
     throw new ApiError(404, "Artwork not found.");
@@ -27,6 +27,8 @@ const getComments = asyncHandler(async (req, res) => {
     authorId: undefined,
   }));
 
+  console.log(`Found ${comments.length} comments for artwork ${artId}`);
+
   res.json(comments);
 });
 
@@ -42,8 +44,8 @@ const addComment = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Comment text is required.");
   }
 
-  // Verifica che l’artwork esista
-  const art = await Artwork.findById(artId).select("authorId").lean();
+  // Verifica che l'artwork esista e ottieni l'authorId
+  const art = await Artwork.findById(artId).select("authorId title").lean();
   if (!art) {
     throw new ApiError(404, "Artwork not found.");
   }
@@ -55,12 +57,39 @@ const addComment = asyncHandler(async (req, res) => {
     text: text.trim(),
   });
 
-  // Notifica in background il proprietario dell’opera
+  // Popola i dati dell'autore per la risposta
+  const populatedComment = await Comment.findById(comment._id)
+    .populate("authorId", "firstName lastName profileImage")
+    .lean();
+
+  // Trasforma per il frontend
+  const responseComment = {
+    ...populatedComment,
+    author: populatedComment.authorId,
+    authorId: undefined,
+  };
+
+  // Notifica in background il proprietario dell'opera
   notificationService
     .notifyNewComment(userId, art.authorId, artId)
-    .catch(console.error);
+    .then((notification) => {
+      if (notification) {
+        console.log(
+          "Comment notification sent successfully:",
+          notification._id
+        );
+      }
+    })
+    .catch((error) => {
+      console.error("Failed to send comment notification:", error);
+    });
 
-  res.status(201).json(comment);
+  console.log(`New comment added to artwork ${artId} by user ${userId}`);
+
+  res.status(201).json({
+    message: "Comment added successfully.",
+    comment: responseComment,
+  });
 });
 
 /**
@@ -76,17 +105,47 @@ const deleteComment = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Comment not found.");
   }
 
-  // Solo admin o autore del commento
+  // Solo admin o autore del commento può eliminarlo
   if (userRole !== "admin" && comment.authorId.toString() !== userId) {
-    throw new ApiError(403, "Forbidden");
+    throw new ApiError(403, "You can only delete your own comments.");
   }
 
   await comment.deleteOne();
+
+  console.log(`Comment ${cid} deleted from artwork ${artId} by user ${userId}`);
+
   res.status(204).send();
+});
+
+/**
+ * GET /api/users/:id/comments
+ * Ottiene tutti i commenti di un utente (opzionale - per il profilo)
+ */
+const getUserComments = asyncHandler(async (req, res) => {
+  const userId = req.params.id === "me" ? req.userId : req.params.id;
+
+  const comments = await Comment.find({ authorId: userId })
+    .populate("artworkId", "title externalId")
+    .populate("authorId", "firstName lastName profileImage")
+    .sort({ createdAt: -1 })
+    .lean();
+
+  const formattedComments = comments.map((c) => ({
+    ...c,
+    author: c.authorId,
+    artwork: c.artworkId,
+    authorId: undefined,
+    artworkId: undefined,
+  }));
+
+  console.log(`Found ${comments.length} comments by user ${userId}`);
+
+  res.json(formattedComments);
 });
 
 module.exports = {
   getComments,
   addComment,
   deleteComment,
+  getUserComments,
 };

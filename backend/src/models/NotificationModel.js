@@ -31,6 +31,18 @@ const notificationSchema = new Schema(
   }
 );
 
+// Indici esistenti
 notificationSchema.index({ userId: 1, isRead: 1 });
+
+// NUOVO: Indice composto per prevenire duplicati e migliorare performance
+notificationSchema.index({
+  userId: 1,
+  type: 1,
+  fromUserId: 1,
+  createdAt: -1,
+});
+
+// NUOVO: Indice per cleanup automatico delle notifiche vecchie
+notificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 2592000 }); // 30 giorni
 
 module.exports = mongoose.model("Notification", notificationSchema);

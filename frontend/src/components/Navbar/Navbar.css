@@ -216,7 +216,6 @@
 }
 
 /* CSS aggiuntivo per la funzionalità di ricerca */
-
 .search-container {
     position: relative;
     display: flex;
@@ -305,6 +304,48 @@
     text-align: center;
     color: #666;
     font-style: italic;
+}
+
+/* Badge non lette sulla campanella – stile coerente */
+.btn-notif {
+    all: unset;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    font-size: 1.4rem;
+    color: #4a5568;
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.btn-notif:hover {
+    color: #4ab1f6;
+    background-color: rgba(0, 123, 255, 0.08);
+    transform: translateY(-1px);
+}
+
+.btn-notif:active {
+    transform: translateY(0);
+    animation: pulse 0.3s ease;
+}
+
+.btn-notif .badge {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    background-color: #ff4757;
+    color: #fff;
+    font-size: 0.65rem;
+    width: 1.1rem;
+    height: 1.1rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
 }
 
 /* Responsive design per mobile */

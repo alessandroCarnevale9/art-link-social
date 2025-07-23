@@ -64,7 +64,17 @@ const followUser = asyncHandler(async (req, res) => {
     // Invia notifica (non bloccante)
     notificationService
       .notifyNewFollower(followerId, followeeId)
-      .catch(console.error);
+      .then((notification) => {
+        if (notification) {
+          console.log(
+            "Follow notification sent successfully:",
+            notification._id
+          );
+        }
+      })
+      .catch((error) => {
+        console.error("Failed to send follow notification:", error);
+      });
 
     res.status(201).json({
       message: "Now following user.",

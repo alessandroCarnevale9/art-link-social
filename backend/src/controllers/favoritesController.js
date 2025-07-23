@@ -2,6 +2,7 @@ const asyncHandler = require("express-async-handler");
 const ApiError = require("../utils/ApiError");
 const Artwork = require("../models/ArtworkModel");
 const Favorite = require("../models/FavoriteModel");
+const notificationService = require("../services/notificationService");
 
 /**
  * POST /api/users/:id/favorites/:artworkId
@@ -21,9 +22,9 @@ const addFavorite = asyncHandler(async (req, res) => {
     artworkId
   );
 
-  // 1) Verifica che l'opera esista
-  const artExists = await Artwork.exists({ _id: artworkId });
-  if (!artExists) throw new ApiError(404, "Artwork not found.");
+  // 1) Verifica che l'opera esista e ottieni l'authorId
+  const artwork = await Artwork.findById(artworkId).select("authorId").lean();
+  if (!artwork) throw new ApiError(404, "Artwork not found.");
 
   // 2) Crea il Favorite (indice unico evita duplicati)
   try {
@@ -41,6 +42,18 @@ const addFavorite = asyncHandler(async (req, res) => {
     { $inc: { favoritesCount: 1 } },
     { new: true }
   );
+
+  // 4) Invia notifica al proprietario dell'artwork (like notification)
+  notificationService
+    .notifyNewLike(userId, artwork.authorId, artworkId)
+    .then((notification) => {
+      if (notification) {
+        console.log("Like notification sent successfully:", notification._id);
+      }
+    })
+    .catch((error) => {
+      console.error("Failed to send like notification:", error);
+    });
 
   res.status(201).json({
     message: "Artwork added to favorites.",
@@ -87,8 +100,14 @@ const removeFavorite = asyncHandler(async (req, res) => {
     { new: true }
   );
 
+  // Nota: Non rimuoviamo le notifiche di like quando si rimuove dai preferiti
+  // per mantenere la cronologia delle notifiche
+
   // 3) Rispondi con il nuovo favoritesCount
-  res.json({ favoritesCount: art.favoritesCount });
+  res.json({
+    message: "Artwork removed from favorites.",
+    favoritesCount: art.favoritesCount,
+  });
 });
 
 /**
@@ -111,16 +130,21 @@ const getFavorites = asyncHandler(async (req, res) => {
     .populate({
       path: "artwork",
       select:
-        "externalId title publishDate linkResource medium dimensions origin description favoritesCount",
+        "externalId title publishDate linkResource medium dimensions origin description favoritesCount authorId",
       populate: [
-        { path: "artistId", select: "displayName" },
+        { path: "authorId", select: "displayName firstName lastName" },
         { path: "categories", select: "name" },
       ],
     })
     .lean();
 
   // 2) Restituisce solo la parte artwork
-  const artworks = favs.map((f) => f.artwork);
+  const artworks = favs
+    .map((f) => f.artwork)
+    .filter((artwork) => artwork !== null); // Rimuove eventuali artwork eliminati
+
+  console.log(`Found ${artworks.length} favorites for user ${userId}`);
+
   res.json(artworks);
 });
 
