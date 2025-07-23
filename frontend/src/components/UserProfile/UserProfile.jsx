@@ -49,10 +49,13 @@ const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
   const loadUserArtworks = async (id) => {
     try {
       const { data } = await getAllArtworks({
-        artistId: id,
+        authorId: id,
         sortBy: "date",
         limit: 20,
       });
+
+      console.log(`ARTWORK DATA ${JSON.stringify(data)}\nID: ${id}`)
+
       setArtworks(data || []);
     } catch (err) {
       console.error("Error loading artworks:", err);
@@ -254,7 +257,7 @@ const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
                 <div className="artwork-container">
                   {a.linkResource ? (
                     <img
-                      src={a.linkResource}
+                      src={a.primaryImageSmall}
                       alt={a.title}
                       className="artwork-image"
                       style={{ height: `${280 + (idx % 3) * 80}px` }}

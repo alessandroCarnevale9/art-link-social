@@ -14,7 +14,7 @@ const {
 /**
  * GET /api/artworks
  * – Public
- * – Filters: title, tag, category, artistId, artworkPeriod
+ * – Filters: title, tag, category, artistId, authorID, artworkPeriod
  * – Sort: date (createdAt desc), popularity (favoritesCount desc)
  */
 const getAllArtworks = asyncHandler(async (req, res) => {
@@ -24,6 +24,7 @@ const getAllArtworks = asyncHandler(async (req, res) => {
     tag,
     category,
     artistId,
+    authorId,
     artworkPeriod,
     sortBy = "date",
   } = req.query;
@@ -37,6 +38,9 @@ const getAllArtworks = asyncHandler(async (req, res) => {
   }
   if (artistId) {
     match.artistId = new mongoose.Types.ObjectId(artistId);
+  }
+  if (authorId) {
+    match.authorId = new mongoose.Types.ObjectId(authorId);
   }
   if (artworkPeriod) match.artworkPeriod = artworkPeriod;
 
