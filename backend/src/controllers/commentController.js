@@ -71,7 +71,7 @@ const addComment = asyncHandler(async (req, res) => {
 
   // Notifica in background il proprietario dell'opera
   notificationService
-    .notifyNewComment(userId, art.authorId, artId)
+    .notifyNewComment(userId, art.authorId, artId, art.title)
     .then((notification) => {
       if (notification) {
         console.log(

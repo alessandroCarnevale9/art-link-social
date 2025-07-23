@@ -45,7 +45,7 @@ const addFavorite = asyncHandler(async (req, res) => {
 
   // 4) Invia notifica al proprietario dell'artwork (like notification)
   notificationService
-    .notifyNewLike(userId, artwork.authorId, artworkId)
+    .notifyNewLike(userId, artwork.authorId, artworkId, art.title)
     .then((notification) => {
       if (notification) {
         console.log("Like notification sent successfully:", notification._id);

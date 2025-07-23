@@ -34,7 +34,6 @@ const NotificationsModal = ({ isOpen, onClose, onUnreadCountChange }) => {
   const filteredNotifications = notifications.filter((n) => {
     if (filter === "all") return true;
     if (filter === "unread") return !n.isRead;
-    // filter === 'read'
     return n.isRead;
   });
 
@@ -45,15 +44,13 @@ const NotificationsModal = ({ isOpen, onClose, onUnreadCountChange }) => {
       const params = {
         page,
         limit: 10,
-        // Usa unreadOnly=true solo per "unread"
+        // Usa unreadOnly solo per il filtro "unread"
         ...(filter === "unread" && { unreadOnly: true }),
       };
-      console.log("Loading notifications with params:", params);
 
       const response = await getNotifications(params);
-      console.log("API response:", response);
-
       const incoming = response.notifications || [];
+
       if (reset) {
         setNotifications(incoming);
       } else {
@@ -63,15 +60,9 @@ const NotificationsModal = ({ isOpen, onClose, onUnreadCountChange }) => {
       setTotalPages(response.pagination?.totalPages || 1);
       setCurrentPage(page);
 
-      // Aggiorna il conteggio delle non lette (da endpoint o calcolo)
-      if (typeof response.unreadCount === "number") {
-        onUnreadCountChange?.(response.unreadCount);
-      } else {
-        const count = (response.notifications || []).filter(
-          (n) => !n.isRead
-        ).length;
-        onUnreadCountChange?.(count);
-      }
+      // Aggiorna sempre il conteggio usando totalUnread dal backend
+      const unreadCount = response.totalUnread ?? 0;
+      onUnreadCountChange?.(unreadCount);
     } catch (error) {
       console.error("Error loading notifications:", error);
     } finally {
@@ -100,19 +91,28 @@ const NotificationsModal = ({ isOpen, onClose, onUnreadCountChange }) => {
     setActionLoading((prev) => ({ ...prev, [id]: "read" }));
     try {
       await markAsRead(id);
+
+      // Aggiorna lo stato locale
       setNotifications((prev) =>
         prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
       );
-      // Update count
-      const unread = notifications.filter(
-        (n) => !n.isRead && n._id !== id
-      ).length;
-      onUnreadCountChange?.(unread);
+
+      // Calcola il nuovo conteggio di non lette
+      const currentUnread = notifications.filter((n) => !n.isRead).length;
+      const wasUnread =
+        notifications.find((n) => n._id === id)?.isRead === false;
+      const newUnreadCount = wasUnread
+        ? Math.max(0, currentUnread - 1)
+        : currentUnread;
+
+      onUnreadCountChange?.(newUnreadCount);
+
+      // Se stiamo visualizzando solo le non lette, rimuovi l'elemento
       if (filter === "unread") {
         setNotifications((prev) => prev.filter((n) => n._id !== id));
       }
     } catch (err) {
-      console.error(err);
+      console.error("Error marking as read:", err);
     } finally {
       setActionLoading((prev) => ({ ...prev, [id]: null }));
     }
@@ -122,11 +122,19 @@ const NotificationsModal = ({ isOpen, onClose, onUnreadCountChange }) => {
     setActionLoading((prev) => ({ ...prev, all: "readAll" }));
     try {
       await markAllAsRead();
+
+      // Aggiorna tutte le notifiche come lette
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+
+      // Azzera il conteggio
       onUnreadCountChange?.(0);
-      if (filter === "unread") setNotifications([]);
+
+      // Se stiamo visualizzando solo le non lette, svuota la lista
+      if (filter === "unread") {
+        setNotifications([]);
+      }
     } catch (err) {
-      console.error(err);
+      console.error("Error marking all as read:", err);
     } finally {
       setActionLoading((prev) => ({ ...prev, all: null }));
     }
@@ -145,17 +153,22 @@ const NotificationsModal = ({ isOpen, onClose, onUnreadCountChange }) => {
     setConfirmModal((m) => ({ ...m, isOpen: false }));
     setActionLoading((prev) => ({ ...prev, [id]: "delete" }));
     try {
-      const wasUnread = notifications.some((n) => n._id === id && !n.isRead);
+      const notificationToDelete = notifications.find((n) => n._id === id);
+      const wasUnread = notificationToDelete && !notificationToDelete.isRead;
+
       await deleteNotification(id);
+
+      // Rimuovi la notifica dalla lista
       setNotifications((prev) => prev.filter((n) => n._id !== id));
+
+      // Se era non letta, decrementa il conteggio
       if (wasUnread) {
-        const remaining = notifications.filter(
-          (n) => !n.isRead && n._id !== id
-        ).length;
-        onUnreadCountChange?.(remaining);
+        const currentUnread = notifications.filter((n) => !n.isRead).length;
+        const newUnreadCount = Math.max(0, currentUnread - 1);
+        onUnreadCountChange?.(newUnreadCount);
       }
     } catch (err) {
-      console.error(err);
+      console.error("Error deleting notification:", err);
     } finally {
       setActionLoading((prev) => ({ ...prev, [id]: null }));
     }
@@ -176,10 +189,14 @@ const NotificationsModal = ({ isOpen, onClose, onUnreadCountChange }) => {
     setActionLoading((prev) => ({ ...prev, all: "deleteAll" }));
     try {
       await deleteAllNotifications();
+
+      // Svuota tutte le notifiche
       setNotifications([]);
+
+      // Azzera il conteggio
       onUnreadCountChange?.(0);
     } catch (err) {
-      console.error(err);
+      console.error("Error deleting all notifications:", err);
     } finally {
       setActionLoading((prev) => ({ ...prev, all: null }));
     }
@@ -245,7 +262,9 @@ const NotificationsModal = ({ isOpen, onClose, onUnreadCountChange }) => {
             className="action-btn mark-all"
             onClick={handleMarkAllAsRead}
             disabled={
-              actionLoading.all === "readAll" || notifications.length === 0
+              actionLoading.all === "readAll" ||
+              notifications.length === 0 ||
+              notifications.every((n) => n.isRead) // Disabilita se tutte sono già lette
             }
           >
             <FaCheckDouble />{" "}

@@ -7,6 +7,7 @@ import {
   FaShare,
   FaExpand,
   FaTrash,
+  FaExclamationTriangle,
 } from "react-icons/fa";
 import { BiDotsHorizontalRounded } from "react-icons/bi";
 import { AuthContext } from "../../context/AuthContext";
@@ -29,9 +30,11 @@ const ImageDetail = () => {
   const [error, setError] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [commentToDelete, setCommentToDelete] = useState(null);
+  const [commentError, setCommentError] = useState(null);
+  const [isAddingComment, setIsAddingComment] = useState(false);
 
-  // Calcola isLiked dinamicamente
-  const isLiked = image && favorites.has(image.externalId);
+  // Calcola isLiked dinamicamente usando externalId se disponibile
+  const isLiked = image && favorites.has(image.externalId || image._id);
 
   /**
    * Carica l'artwork e i commenti
@@ -41,45 +44,86 @@ const ImageDetail = () => {
       setLoading(true);
       setError(null);
 
-      // 1) Fetch artwork
-      let res = await fetch(`/api/artworks/${id}`);
       let data;
-      if (res.status === 404) {
-        // Importa dal MET se non in DB
-        const imported = await importMetArtwork(id);
-        data = imported.artwork;
-      } else if (!res.ok) {
-        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-      } else {
+
+      // Step 1: Prova a cercare nel database interno per _id
+      const res = await fetch(`/api/artworks/${id}`);
+
+      if (res.ok) {
+        // Trovato nel database interno
         data = await res.json();
+        console.log("Found artwork in database:", data);
+      } else if (res.status === 404) {
+        // Non trovato nel DB interno, prova a importare dal MET usando l'id come externalId
+        console.log(
+          "Artwork not found in database, importing from MET with externalId:",
+          id
+        );
+        try {
+          const imported = await importMetArtwork(id);
+          data = imported.artwork;
+          console.log("Successfully imported artwork from MET:", data);
+        } catch (importError) {
+          console.error("Import from MET failed:", importError);
+          throw new Error(
+            "Artwork not found in database and could not import from MET"
+          );
+        }
+      } else {
+        throw new Error(
+          `Failed to fetch artwork: ${res.status} ${res.statusText}`
+        );
       }
 
-      // 2) Aggiorna stato
+      if (!data) {
+        throw new Error("No artwork data available");
+      }
+
+      // Aggiorna stato artwork
       setImage(data);
-      setLikesCount(data.favoritesCount);
+      setLikesCount(data.favoritesCount || 0);
 
-      // 3) Carica commenti
-      const rawComments = await getComments(data._id);
+      // Carica commenti usando l'_id del database interno
+      if (data._id) {
+        await loadComments(data._id);
+      } else {
+        console.warn("No artwork _id available for comments");
+        setComments([]);
+      }
+    } catch (err) {
+      console.error("Error loading artwork:", err);
+      setError(err.message || "Unable to load image. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      console.log(`RAW COMMENTS --->\t ${JSON.stringify(rawComments)}`);
+  /**
+   * Carica solo i commenti
+   */
+  const loadComments = async (artworkId = image?._id) => {
+    if (!artworkId) return;
+
+    try {
+      const rawComments = await getComments(artworkId);
+      console.log("Raw comments:", rawComments);
 
       const enriched = rawComments
         .map((c) => ({
           ...c,
           authorId: c.author?._id || c.authorId,
           author: {
-            username:
-              c.author?.firstName || c.author?.username || "Unknown",
+            username: c.author?.firstName || c.author?.username || "Unknown",
+            _id: c.author?._id,
           },
         }))
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
       setComments(enriched);
-      console.log(`ENRICHED --->\t ${JSON.stringify(enriched)}`);
-    } catch (err) {
-      console.error("Error loading artwork:", err);
-      setError("Unable to load image. Please try again.");
-    } finally {
-      setLoading(false);
+      console.log("Enriched comments:", enriched);
+    } catch (commentError) {
+      console.error("Error loading comments:", commentError);
+      setComments([]);
     }
   };
 
@@ -94,7 +138,7 @@ const ImageDetail = () => {
       return;
     }
 
-    const extId = image.externalId;
+    const extId = image.externalId || image._id;
     const wasLiked = isLiked;
     const prevCount = likesCount;
     const prevFavorites = new Set(favorites);
@@ -111,40 +155,117 @@ const ImageDetail = () => {
     dispatch({ type: "SET_FAVORITES", payload: nextFavorites });
 
     try {
-      // Passiamo SOLO artwork._id, l'API usa sempre /users/me/...
       const result = wasLiked
         ? await removeFavorite(image._id)
         : await addFavorite(image._id);
 
       // Aggiorna con il conteggio reale dal server
-      setLikesCount(result.favoritesCount);
+      setLikesCount(result.favoritesCount || likesCount);
     } catch (err) {
       console.error("Like error:", err);
       // Rollback in caso di errore
       setLikesCount(prevCount);
       dispatch({ type: "SET_FAVORITES", payload: prevFavorites });
+      setError("Could not update favorite. Please try again.");
+      setTimeout(() => setError(null), 3000);
     }
   };
 
   // ------------------- GESTIONE COMMENTI -------------------
   const handleAddComment = async (e) => {
     e.preventDefault();
-    if (!newComment.trim()) return;
-    if (!user) return navigate("/login");
+    const commentText = newComment.trim();
+
+    console.log("=== STARTING ADD COMMENT ===");
+    console.log("Comment text:", commentText);
+    console.log("User:", user);
+    console.log("Image:", image);
+    console.log("Current comments:", comments);
+
+    if (!commentText) {
+      console.log("Empty comment text, returning");
+      return;
+    }
+
+    if (!user) {
+      console.log("No user, redirecting to login");
+      navigate("/login");
+      return;
+    }
+
+    if (!image?._id) {
+      console.log("No image ID available");
+      setCommentError("Cannot add comment: artwork not properly loaded");
+      setTimeout(() => setCommentError(null), 3000);
+      return;
+    }
+
+    setIsAddingComment(true);
+    setCommentError(null);
 
     try {
-      const created = await addComment(image._id, { text: newComment.trim() });
-      const newC = {
-        ...created,
-        authorId: user.userData.id,
+      console.log("Making API call to addComment...");
+      const created = await addComment(image._id, { text: commentText });
+      console.log("API Response - Created comment:", created);
+      console.log(
+        "Created comment structure:",
+        JSON.stringify(created, null, 2)
+      );
+
+      // Pulisci l'input solo dopo successo
+      setNewComment("");
+
+      // Crea il nuovo commento con la struttura corretta
+      const newCommentData = {
+        _id: created._id || created.id,
+        text: created.text || commentText,
+        createdAt:
+          created.createdAt || created.date || new Date().toISOString(),
+        authorId:
+          created.author?._id ||
+          created.authorId ||
+          created.userId ||
+          user.userData.id,
         author: {
-          username: user.userData.firstName || user.userData.username,
+          username:
+            created.author?.firstName ||
+            created.author?.username ||
+            created.author?.name ||
+            user.userData.firstName ||
+            user.userData.username ||
+            "You",
+          _id:
+            created.author?._id ||
+            created.authorId ||
+            created.userId ||
+            user.userData.id,
         },
       };
-      setComments((prev) => [newC, ...prev]);
-      setNewComment("");
+
+      console.log("Processed comment data:", newCommentData);
+
+      // Aggiungi il commento alla lista
+      setComments((prevComments) => {
+        console.log("Previous comments:", prevComments);
+        const updatedComments = [newCommentData, ...prevComments];
+        console.log("Updated comments:", updatedComments);
+        return updatedComments;
+      });
+
+      console.log("Comment added successfully!");
     } catch (err) {
-      console.error("Add comment error:", err);
+      console.error("=== ADD COMMENT ERROR ===");
+      console.error("Error object:", err);
+      console.error("Error message:", err.message);
+      console.error("Error stack:", err.stack);
+
+      setCommentError(
+        `Could not add comment: ${err.message || "Unknown error"}`
+      );
+      setTimeout(() => setCommentError(null), 5000);
+    } finally {
+      setIsAddingComment(false);
+      console.log("=== END ADD COMMENT ===");
     }
   };
 
@@ -154,12 +275,24 @@ const ImageDetail = () => {
   };
 
   const confirmDeleteComment = async () => {
-    if (!commentToDelete) return;
+    if (!commentToDelete || !image?._id) return;
+
+    const previousComments = [...comments];
+
     try {
-      await deleteComment(image._id, commentToDelete);
+      // Rimuovi immediatamente dalla UI (optimistic update)
       setComments((prev) => prev.filter((c) => c._id !== commentToDelete));
+
+      // Chiama l'API
+      await deleteComment(image._id, commentToDelete);
     } catch (err) {
       console.error("Delete comment error:", err);
+
+      // Rollback in caso di errore
+      setComments(previousComments);
+
+      setCommentError("Could not delete comment. Please try again.");
+      setTimeout(() => setCommentError(null), 3000);
     } finally {
       setShowDeleteModal(false);
       setCommentToDelete(null);
@@ -233,17 +366,44 @@ const ImageDetail = () => {
           ) : image.tags?.length ? (
             <p>{image.tags.join(", ")}</p>
           ) : null}
+          {image.medium && (
+            <p>
+              <strong>Medium:</strong> {image.medium}
+            </p>
+          )}
+          {image.dimensions && (
+            <p>
+              <strong>Dimensions:</strong> {image.dimensions}
+            </p>
+          )}
+          {image.objectDate && (
+            <p>
+              <strong>Date:</strong> {image.objectDate}
+            </p>
+          )}
         </div>
 
         {/* Commenti */}
         <div className="comments-section">
           <h3>Comments</h3>
+
+          {/* Errore commenti */}
+          {commentError && (
+            <div className="error-message">
+              <FaExclamationTriangle />
+              <span>{commentError}</span>
+            </div>
+          )}
+
           {comments.length === 0 ? (
             <p className="no-comments">No comments yet</p>
           ) : (
             <div className="comments-list">
               {comments.map((c) => (
-                <div key={c._id} className="comment">
+                <div
+                  key={c._id}
+                  className={`comment ${c.isTemporary ? "temporary" : ""}`}
+                >
                   <Link
                     to={`/profile/${c.authorId}`}
                     className="comment-avatar-link"
@@ -258,59 +418,72 @@ const ImageDetail = () => {
                       to={`/profile/${c.authorId}`}
                       className="comment-author-link"
                     >
-                      <div className="comment-author">{c.author.username}</div>
+                      <div className="comment-author">
+                        {c.author.username}
+                        {c.isTemporary && (
+                          <span className="sending-indicator">
+                            {" "}
+                            (sending...)
+                          </span>
+                        )}
+                      </div>
                     </Link>
                     <div className="comment-text">{c.text}</div>
                     <div className="comment-time">
                       {new Date(c.createdAt).toLocaleDateString()}
                     </div>
                   </div>
-                  {user && c.authorId === user.userData.id && (
-                    <button
-                      className="delete-button"
-                      onClick={() => handleDeleteComment(c._id)}
-                      aria-label="Delete comment"
-                    >
-                      <FaTrash />
-                    </button>
-                  )}
+                  {user &&
+                    c.authorId === user.userData.id &&
+                    !c.isTemporary && (
+                      <button
+                        className="delete-button"
+                        onClick={() => handleDeleteComment(c._id)}
+                        aria-label="Delete comment"
+                      >
+                        <FaTrash />
+                      </button>
+                    )}
                 </div>
               ))}
             </div>
           )}
 
           {/* Form nuovo commento */}
-          <form onSubmit={handleAddComment} className="comment-form">
-            <div className="form-row">
-              <div className="user-avatar small">
-                <Link
-                  to={`/profile/${user?.userData.id}`}
-                  className="user-avatar-link"
-                  draggable="false"
+          {user && (
+            <form onSubmit={handleAddComment} className="comment-form">
+              <div className="form-row">
+                <div className="user-avatar small">
+                  <Link
+                    to={`/profile/${user?.userData.id}`}
+                    className="user-avatar-link"
+                    draggable="false"
+                  >
+                    <span>
+                      {user?.userData.firstName?.[0]?.toUpperCase() ||
+                        user?.userData.username?.[0]?.toUpperCase() ||
+                        "U"}
+                    </span>
+                  </Link>
+                </div>
+                <input
+                  type="text"
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  placeholder="Add a comment"
+                  className="comment-input"
+                  disabled={isAddingComment}
+                />
+                <button
+                  type="submit"
+                  className="send-button"
+                  disabled={!newComment.trim() || isAddingComment}
                 >
-                  <span>
-                    {user?.userData.firstName?.[0]?.toUpperCase() ||
-                      user?.userData.username?.[0]?.toUpperCase() ||
-                      "U"}
-                  </span>
-                </Link>
+                  {isAddingComment ? "Sending..." : "Send"}
+                </button>
               </div>
-              <input
-                type="text"
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                placeholder="Add a comment"
-                className="comment-input"
-              />
-              <button
-                type="submit"
-                className="send-button"
-                disabled={!newComment.trim()}
-              >
-                Send
-              </button>
-            </div>
-          </form>
+            </form>
+          )}
         </div>
       </div>
 

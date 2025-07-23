@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { FiMoreHorizontal } from "react-icons/fi";
 import { getUserById, getMe } from "../../api/users";
 import { getAllArtworks } from "../../api/artworks";
@@ -13,8 +13,9 @@ import "./UserProfile.css";
 
 const extractId = (u) => u?._id || u?.id || null;
 
-const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
+const UserProfile = ({ isOwnProfile = false }) => {
   const { userId: paramUserId } = useParams();
+  const navigate = useNavigate();
 
   // ─────────────── state ───────────────
   const [userProfile, setUserProfile] = useState(null);
@@ -36,7 +37,9 @@ const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
         ? await getMe()
         : paramUserId
         ? await getUserById(paramUserId)
-        : (() => { throw new Error("Missing user ID"); })();
+        : (() => {
+            throw new Error("Missing user ID");
+          })();
       setUserProfile(data);
       return data;
     } catch (err) {
@@ -54,7 +57,7 @@ const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
         limit: 20,
       });
 
-      console.log(`ARTWORK DATA ${JSON.stringify(data)}\nID: ${id}`)
+      console.log(`ARTWORK DATA ${JSON.stringify(data)}\nID: ${id}`);
 
       setArtworks(data || []);
     } catch (err) {
@@ -109,6 +112,14 @@ const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
     }
   };
 
+  // ─────────────── artwork click handler ───────────────
+  const handleArtworkClick = (artwork) => {
+    // Usa externalId se disponibile, altrimenti _id
+    const artworkId = artwork.externalId || artwork._id;
+    console.log("Navigating to artwork:", artworkId, artwork);
+    navigate(`/image/${artworkId}`);
+  };
+
   // ─────────────── initial loading ───────────────
   useEffect(() => {
     const loadData = async () => {
@@ -140,9 +151,7 @@ const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
     if (!currentUserId || !userProfile || isOwnProfile) {
       setIsFollowing(false);
     } else {
-      setIsFollowing(
-        followers.some((f) => extractId(f) === currentUserId)
-      );
+      setIsFollowing(followers.some((f) => extractId(f) === currentUserId));
     }
   }, [followers, currentUserId, userProfile, isOwnProfile]);
 
@@ -181,25 +190,18 @@ const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
       />
     ) : (
       <span className="avatar-text">
-        {((userProfile.firstName?.[0] || "") +
-          (userProfile.lastName?.[0] || "")) ||
-          "U"}
+        {(userProfile.firstName?.[0] || "") +
+          (userProfile.lastName?.[0] || "") || "U"}
       </span>
     );
 
   const getDisplayName = () =>
     userProfile.firstName || userProfile.lastName
-      ? `${userProfile.firstName || ""} ${
-          userProfile.lastName || ""
-        }`.trim()
+      ? `${userProfile.firstName || ""} ${userProfile.lastName || ""}`.trim()
       : userProfile.email?.split("@")[0] || "User";
 
-  const handleArtworkClick = (id) =>
-    onArtworkClick ? onArtworkClick(id) : console.log(`Navigate to ${id}`);
-
   const isViewingOwnProfile =
-    isOwnProfile ||
-    (currentUserId && extractId(userProfile) === currentUserId);
+    isOwnProfile || (currentUserId && extractId(userProfile) === currentUserId);
 
   return (
     <div className="user-profile">
@@ -225,9 +227,14 @@ const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
             <button
               onClick={handleFollowToggle}
               className={`follow-btn ${isFollowing ? "following" : ""}`}
+              disabled={actionLoading}
             >
               <span className="label-default">
-                {isFollowing ? "Following" : "Follow"}
+                {actionLoading
+                  ? "Loading..."
+                  : isFollowing
+                  ? "Following"
+                  : "Follow"}
               </span>
               <span className="label-unfollow">Unfollow</span>
             </button>
@@ -241,29 +248,30 @@ const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
       <div className="content-section">
         {artworks.length ? (
           <div className="artworks-grid">
-            {artworks.map((a, idx) => (
+            {artworks.map((artwork, idx) => (
               <div
-                key={a._id}
+                key={artwork._id}
                 className="artwork-item"
-                onClick={() => handleArtworkClick(a._id)}
+                onClick={() => handleArtworkClick(artwork)}
                 onKeyDown={(e) =>
-                  ["Enter", " "].includes(e.key) &&
-                  handleArtworkClick(a._id)
+                  ["Enter", " "].includes(e.key) && handleArtworkClick(artwork)
                 }
                 tabIndex={0}
                 role="button"
-                aria-label={`View artwork: ${a.title}`}
+                aria-label={`View artwork: ${artwork.title}`}
               >
                 <div className="artwork-container">
-                  {a.linkResource ? (
+                  {artwork.primaryImageSmall ? (
                     <img
-                      src={a.primaryImageSmall}
-                      alt={a.title}
+                      src={artwork.primaryImageSmall}
+                      alt={artwork.title}
                       className="artwork-image"
                       style={{ height: `${280 + (idx % 3) * 80}px` }}
                       onError={(e) => {
                         e.target.style.display = "none";
-                        e.target.parentNode.innerHTML = `<div class="artwork-placeholder">${a.title}</div>`;
+                        e.target.parentNode.innerHTML = `<div class="artwork-placeholder" style="height: ${
+                          280 + (idx % 3) * 80
+                        }px">${artwork.title}</div>`;
                       }}
                     />
                   ) : (
@@ -271,13 +279,13 @@ const UserProfile = ({ isOwnProfile = false, onArtworkClick = null }) => {
                       className="artwork-placeholder"
                       style={{ height: `${280 + (idx % 3) * 80}px` }}
                     >
-                      {a.title}
+                      {artwork.title}
                     </div>
                   )}
                   <div className="artwork-overlay">
-                    <h3 className="artwork-title">{a.title}</h3>
-                    {a.medium && (
-                      <p className="artwork-medium">{a.medium}</p>
+                    <h3 className="artwork-title">{artwork.title}</h3>
+                    {artwork.medium && (
+                      <p className="artwork-medium">{artwork.medium}</p>
                     )}
                   </div>
                 </div>

@@ -37,23 +37,18 @@ function Navbar() {
     if (!user) return;
 
     try {
-      // Fetch only unread notifications with minimal data (just need count)
+      // Fetch con parametri minimi per ottenere solo il conteggio
       const response = await getNotifications({
         page: 1,
-        limit: 1, // We only need the count, so minimal limit
-        filter: "unread", // Only get unread notifications
+        limit: 1, // Limite minimo per ridurre i dati trasferiti
       });
 
-      // Use totalUnread if available, otherwise count unread notifications
-      const count =
-        response.totalUnread ??
-        response.notifications?.filter((n) => !n.isRead).length ??
-        0;
-
+      // Usa totalUnread dal backend (ora sempre presente)
+      const count = response.totalUnread ?? 0;
       setUnreadCount(count);
     } catch (error) {
       console.error("Error fetching unread notification count:", error);
-      // Don't update count on error to avoid clearing existing count
+      // Non aggiornare il count in caso di errore per evitare reset indesiderati
     }
   };
 
@@ -109,23 +104,22 @@ function Navbar() {
       // Clear count when user logs out
       setUnreadCount(0);
     }
-  }, [user]); // Dependency on user to refetch when login state changes
+  }, [user]);
 
-  // Optional: Set up periodic refresh of unread count
+  // Refresh unread count periodically (solo quando il modal è chiuso)
   useEffect(() => {
     if (!user) return;
 
-    // Refresh unread count every 30 seconds (optional)
     const interval = setInterval(() => {
       if (!notifOpen) {
-        // Only refresh if modal is not open to avoid conflicts
         fetchUnreadCount();
       }
-    }, 30000); // 30 seconds
+    }, 30000); // 30 secondi
 
     return () => clearInterval(interval);
   }, [user, notifOpen]);
 
+  // Cleanup search timeout
   useEffect(() => {
     const onClickOutside = (e) => {
       if (searchRef.current && !searchRef.current.contains(e.target)) {
@@ -142,14 +136,20 @@ function Navbar() {
     };
   }, []);
 
-  // Enhanced notification count update handler
+  // Handler per aggiornamenti del count dalle notifiche
   const handleUnreadCountChange = (count) => {
     setUnreadCount(count);
   };
 
-  // Handle notification modal open
+  // Handle notification modal open/close
   const handleNotificationClick = () => {
     setNotifOpen(true);
+  };
+
+  const handleNotificationClose = () => {
+    setNotifOpen(false);
+    // Ricarica il count quando si chiude il modal per sincronizzare
+    fetchUnreadCount();
   };
 
   const role = user?.userData?.role;
@@ -312,7 +312,7 @@ function Navbar() {
 
       <NotificationsModal
         isOpen={notifOpen}
-        onClose={() => setNotifOpen(false)}
+        onClose={handleNotificationClose}
         onUnreadCountChange={handleUnreadCountChange}
       />
     </>

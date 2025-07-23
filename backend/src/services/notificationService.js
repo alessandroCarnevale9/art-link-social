@@ -54,7 +54,7 @@ async function notifyNewFollower(followerId, followeeId) {
   }
 }
 
-async function notifyNewComment(commenterId, artworkOwnerId, artworkId) {
+async function notifyNewComment(commenterId, artworkOwnerId, artworkId, artworkName) {
   try {
     // Evita auto-notifiche
     if (commenterId.toString() === artworkOwnerId.toString()) {
@@ -78,7 +78,7 @@ async function notifyNewComment(commenterId, artworkOwnerId, artworkId) {
     return await Notification.create({
       userId: artworkOwnerId,
       type: "NewComment",
-      message: `Someone commented on your artwork ${artworkId}`,
+      message: `Someone commented on your artwork ${artworkName}`,
       fromUserId: commenterId,
     });
   } catch (error) {
@@ -87,7 +87,7 @@ async function notifyNewComment(commenterId, artworkOwnerId, artworkId) {
   }
 }
 
-async function notifyNewLike(likerId, artworkOwnerId, artworkId) {
+async function notifyNewLike(likerId, artworkOwnerId, artworkId, artworkName) {
   try {
     // Evita auto-notifiche
     if (likerId.toString() === artworkOwnerId.toString()) {
@@ -111,7 +111,7 @@ async function notifyNewLike(likerId, artworkOwnerId, artworkId) {
     return await Notification.create({
       userId: artworkOwnerId,
       type: "NewLike",
-      message: `Someone liked your artwork ${artworkId}`,
+      message: `Someone liked your artwork ${artworkName}`,
       fromUserId: likerId,
     });
   } catch (error) {

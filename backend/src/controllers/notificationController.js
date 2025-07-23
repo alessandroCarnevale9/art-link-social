@@ -10,12 +10,11 @@ const notificationService = require("../services/notificationService");
 const getNotifications = asyncHandler(async (req, res) => {
   const userId = req.userId;
   const { page = 1, limit = 20, unreadOnly = false } = req.query;
-
   const skip = (page - 1) * limit;
   const query = { userId };
 
   // Filtro per solo non lette se richiesto
-  if (unreadOnly === 'true') {
+  if (unreadOnly === "true") {
     query.isRead = false;
   }
 
@@ -30,6 +29,12 @@ const getNotifications = asyncHandler(async (req, res) => {
   const total = await Notification.countDocuments(query);
   const totalPages = Math.ceil(total / limit);
 
+  // IMPORTANTE: Conta sempre le notifiche non lette totali dell'utente
+  const totalUnread = await Notification.countDocuments({
+    userId,
+    isRead: false,
+  });
+
   // Trasforma per il frontend
   const formattedNotifications = notifications.map((n) => ({
     ...n,
@@ -37,7 +42,9 @@ const getNotifications = asyncHandler(async (req, res) => {
     fromUserId: undefined,
   }));
 
-  console.log(`Found ${notifications.length} notifications for user ${userId}`);
+  console.log(
+    `Found ${notifications.length} notifications for user ${userId}, ${totalUnread} unread total`
+  );
 
   res.json({
     notifications: formattedNotifications,
@@ -48,6 +55,9 @@ const getNotifications = asyncHandler(async (req, res) => {
       hasNext: page < totalPages,
       hasPrev: page > 1,
     },
+    // Aggiungi sempre il conteggio totale delle non lette
+    totalUnread,
+    unreadCount: totalUnread, // Per compatibilità
   });
 });
 
@@ -84,7 +94,9 @@ const markAsRead = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Notification not found.");
   }
 
-  console.log(`Notification ${notificationId} marked as read by user ${userId}`);
+  console.log(
+    `Notification ${notificationId} marked as read by user ${userId}`
+  );
 
   res.json({
     message: "Notification marked as read.",
@@ -108,7 +120,9 @@ const markAllAsRead = asyncHandler(async (req, res) => {
     { isRead: true }
   );
 
-  console.log(`Marked ${result.modifiedCount} notifications as read for user ${userId}`);
+  console.log(
+    `Marked ${result.modifiedCount} notifications as read for user ${userId}`
+  );
 
   res.json({
     message: "All notifications marked as read.",
@@ -147,7 +161,9 @@ const deleteAllNotifications = asyncHandler(async (req, res) => {
 
   const result = await Notification.deleteMany({ userId });
 
-  console.log(`Deleted ${result.deletedCount} notifications for user ${userId}`);
+  console.log(
+    `Deleted ${result.deletedCount} notifications for user ${userId}`
+  );
 
   res.json({
     message: "All notifications deleted.",
@@ -171,7 +187,9 @@ const cleanupOldNotifications = asyncHandler(async (req, res) => {
   const result = await notificationService.cleanOldNotifications(daysOld);
 
   res.json({
-    message: `Cleanup completed. Deleted ${result?.deletedCount || 0} old notifications.`,
+    message: `Cleanup completed. Deleted ${
+      result?.deletedCount || 0
+    } old notifications.`,
     deletedCount: result?.deletedCount || 0,
   });
 });
