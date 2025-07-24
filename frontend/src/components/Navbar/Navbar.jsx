@@ -90,9 +90,12 @@ function Navbar() {
     const id = item._id || item.id || item["*id"];
     if (!id) return;
     let path = "/";
-    if (type === "artwork") path = `/artwork/${id}`;
+    if (type === "artwork") path = `/image/${id}`;
     if (type === "user") path = `/profile/${id}`;
     if (type === "category") path = `/category/${id}`;
+
+    // console.log(`SEARCH PATH: ---> ${path}`);
+
     navigate(path);
   };
 
