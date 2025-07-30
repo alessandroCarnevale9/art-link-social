@@ -296,6 +296,9 @@ function Navbar() {
 
   // Render search results helper
   const renderSearchResults = (results, onResultClick) => {
+
+    console.log("RESULTS --->\t", results)
+
     if (!results) return null;
 
     return (
@@ -351,7 +354,7 @@ function Navbar() {
         {!results.results.artworks?.length &&
           !results.results.users?.length &&
           !results.results.categories?.length && (
-            <div className="no-results">Nessun risultato trovato</div>
+            <div className="no-results">No results found</div>
           )}
       </>
     );

@@ -94,7 +94,7 @@ const getArtworkById = asyncHandler(async (req, res) => {
         as: "author",
       },
     },
-    { $unwind: "$author" },
+    { $unwind: { path: "$author", preserveNullAndEmptyArrays: true } },
     ...lookupArtist(),
     ...lookupCategories(),
     ...addCommentsCount(),
